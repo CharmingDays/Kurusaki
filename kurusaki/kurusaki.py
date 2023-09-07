@@ -16,8 +16,7 @@ extensions = [
     'Cogs.utility',
     'Cogs.events',
     'Cogs.text_channel',
-    'Cogs.league',1
-    # 'Cogs.live_check'
+    'Cogs.league'
 ]
 
 
