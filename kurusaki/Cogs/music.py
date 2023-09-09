@@ -9,7 +9,7 @@ import wavelink,os
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 from discord.ext import commands
 from wavelink import NodePool,Player,Node,TrackEventPayload
-
+from wavelink.exceptions import NoTracksError
 
 
 
@@ -126,6 +126,14 @@ class Music(commands.Cog):
         if seconds < 10:
             seconds = f"0{seconds}"
         return f"{math.trunc(minutes)}:{seconds}"
+
+
+
+    async def send_interaction(self,ctx:Context,message:str):
+        if ctx.interaction != None:
+            return await ctx.interaction.response.send_message(message)
+        return await ctx.send(message)
+
 
 
     async def send_embed(self,payload:TrackEventPayload,track:wavelink.Playable):
@@ -257,6 +265,11 @@ class Music(commands.Cog):
             # Start first song
             return await player.play(track)
     
+    @play.error
+    async def play_error(self,ctx:Context,error):
+        if isinstance(error.original,NoTracksError):
+            return await self.send_interaction(ctx,error.original.args[0])
+
     async def load_playlist_songs(self,ctx:Context,player:Player,songs:typing.List[str]):
         for song in songs:
             track:wavelink.Playable = await wavelink.YouTubeTrack.search(f"https://www.youtube.com/watch?v={song['id']}")
