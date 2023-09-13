@@ -45,14 +45,15 @@ class ServerEvents(commands.Cog):
         Automatically add roles to members when they join server if roles provided
         """
         guildId:str = str(member.guild.id)
-        guildRoles:typing.List[int] = self.mongoDoc[guildId]['auto_roles']
-        incomingRoles:typing.List[discord.Role] = []
-        if guildRoles:
-            for roleId in guildRoles:
-                role = member.guild.get_role(roleId)
-                if role:
-                    incomingRoles.append(role)
-            await member.add_roles(*incomingRoles,reason='Server Auto Role.')
+        if guildId in self.mongoDoc:
+            guildRoles = self.mongoDoc[guildId]['auto_roles']
+            incomingRoles = []
+            if guildRoles:
+                for roleId in guildRoles:
+                    role = member.guild.get_role(roleId)
+                    if role:
+                        incomingRoles.append(role)
+                await member.add_roles(*incomingRoles,reason='Server Auto Role.')
 
 
 
