@@ -16,7 +16,8 @@ extensions = [
     'Cogs.utility',
     'Cogs.events',
     'Cogs.text_channel',
-    'Cogs.league'
+    'Cogs.league',
+    'Cogs.ocean_bottle'
 ]
 
 
