@@ -55,7 +55,7 @@ class OceanBottle(commands.Cog):
 
     async def bottle_generator(self):
         #TODO: Auto calibrate the randomRange with frequency of commands being used
-        randomRange = random.randint(0,3945)
+        randomRange = random.choice(len(self.mongoDoc['bottles'])*100)
         try:
             message =self.mongoDoc['bottles'][randomRange]
             return message
