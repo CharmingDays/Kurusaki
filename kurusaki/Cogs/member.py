@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from discord.ext.commands import command,Cog,Greedy
-import asyncio
+from discord.ext.commands import Context
 
 #NOTE: MEMBER AND MEMBER.VOICE WILL BE COMBINED AS ONE
 
@@ -17,6 +17,12 @@ class Member(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+
+    @commands.hybrid_command(name='member-events')
+    async def member_events(self,ctx:Context):
+        """
+        command group responsible for dealing with `member_events`
+        """
 
 
     @commands.command(hidden=True,enabled=True,aliases=['user.info'])

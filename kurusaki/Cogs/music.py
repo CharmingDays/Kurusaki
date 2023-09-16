@@ -10,7 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 from discord.ext import commands
 from wavelink import NodePool,Player,Node,TrackEventPayload
 from wavelink.exceptions import NoTracksError
-
+from discord.ext import tasks
 
 
 class Music(commands.Cog):
@@ -21,7 +21,7 @@ class Music(commands.Cog):
         self.bot:commands.Bot = bot
         self.players = {}
         self.messages = {}
-        self.no_cog_check = ['myplaylist',' pplaylist','serversongs']
+        self.no_cog_check = ['myplaylist',' pplaylist','serversongs','nowplaying','np']
 
 
     async def load_command_aliases(self):
@@ -164,7 +164,14 @@ class Music(commands.Cog):
             message:discord.Message = await channel.send(embed=emb)
             self.messages[message.guild.id]['last_message'] = message.id
 
-
+    @tasks.loop(minutes=5)
+    async def clear_player_cache(self):
+        """
+        Clear the "cache" from the `self.players` dict that has been idling > `WAIT_TIME`
+        """
+        WAIT_TIME = 8*60
+        for guildId in self.players.copy():
+            pass
 
     @commands.Cog.listener()
     async def on_wavelink_track_start(self,payload:TrackEventPayload):
@@ -204,6 +211,7 @@ class Music(commands.Cog):
         if player and player.is_playing:    
             return await ctx.send(f"[{player.current.title}]({player.current.uri})")
         
+        return await ctx.send("No track currently playing")
 
     @commands.command(aliases=['대기열','隊列'])
     async def queue(self,ctx:Context):

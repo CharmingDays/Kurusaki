@@ -1,1 +1,2 @@
 Include logging for the events during bot loading and code errors
+Group async functions for `on_member_join` to run together

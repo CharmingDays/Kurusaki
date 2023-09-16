@@ -14,18 +14,21 @@ class ServerEvents(commands.Cog):
     def __init__(self,bot):
         self.bot:commands.Bot = bot
         self.docId = {"_id":"serverEvents"}
+        self.cmdDoc = None
 
 
     async def setup_mongodb_connection(self):
         client = AsyncIOMotorClient(os.getenv("MONGO"))
         database = client['Discord-Bot-Database']
         collection = database['General']
-        doc = await collection.find_one({"_id":"serverEvents"})
-        if not doc:
-            doc = {"_id":"serverEventsBackup"}
+        eventDoc = await collection.find_one({"_id":"serverEvents"})
+        cmdDoc = await collection.find_one({"_id":"command_usage"})
+        self.cmdDoc = cmdDoc
+        if not eventDoc:
+            eventDoc = {"_id":"serverEventsBackup"}
         self.collection = collection
         self.mongoClient = client
-        self.mongoDoc = doc
+        self.mongoDoc = eventDoc
 
     async def cog_load(self):
         await self.setup_mongodb_connection()
@@ -80,6 +83,29 @@ class ServerEvents(commands.Cog):
             return await channel.send(message)
 
 
+
+    @commands.Cog.listener('on_command')
+    async def command_use_counter(self,ctx:Context):
+        ctx
+        commandName = ctx.command.name.lower()
+        guildId = str(ctx.guild.id)
+
+        if commandName in self.cmdDoc['commands']:
+            self.cmdDoc['commands'][commandName]['guilds'][guildId]+=1
+            updateFilter  = {"$inc":{f"commands.{commandName}.guilds.{guildId}":+1}}
+            await self.collection.update_one({"_id":"command_usage"},updateFilter)
+
+        if commandName not in self.cmdDoc['commands']:
+            self.cmdDoc['commands'][commandName] = {"guilds":{guildId:1}}
+            updateFilter = {"$set":{f"commands.{commandName}":self.cmdDoc['commands'][commandName]}}
+            await self.collection.update_one({"_id":"command_usage"},updateFilter)
+  
+  
+    async def custom_server_events(self,member:discord.Member):
+        if member.guild.id == 298994260810924032:
+            await member.edit(nick=member.display_name.lower())
+
+  
     @commands.Cog.listener('on_member_join')
     async def auto_server_events(self,member:discord.Member):
         """
