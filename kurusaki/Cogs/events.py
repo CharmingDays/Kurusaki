@@ -5,7 +5,6 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands.context import Context
 from motor.motor_asyncio import AsyncIOMotorClient
-import motor.motor_asyncio
 
 class ServerEvents(commands.Cog):
     """

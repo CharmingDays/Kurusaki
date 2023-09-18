@@ -24,6 +24,26 @@ class Utility(Cog):
     #         cooldown_timer = ctx.command.get_cooldown_retry_after(ctx)
     #         return await ctx.send(f'Command is on cooldown for {cooldown_timer} more seconds')
 
+    @commands.cooldown(rate=5,per=120,type=commands.BucketType.user)
+    @command(name='save-quote')
+    async def save_quote(self,ctx:Context,msgId:typing.Optional[int]):
+        """
+        Save a message as a quote for your server members to view later via `view-quote` command
+        """
+        try:
+            message = await ctx.channel.fetch_message(msgId)
+            #TODO: Update the message attributes and contents into database
+            messageData = {'content':message.content,'id':message.id,'author':message.author,'date':message.created_at,'savedBy':ctx.author.id}
+            updateFilter = {"$set":{f"{ctx.guild.id}.{message.id}":messageData}}
+        except Exception as error:
+            if isinstance(error,discord.NotFound):
+                return await ctx.send(f'Message ID {msgId} does not exist for channel {ctx.channel.mention}')
+            if isinstance(error,discord.Forbidden):
+                return await ctx.send(f"Bot does not have permission to access the message with ID {msgId}")
+            if isinstance(error,discord.HTTPException):
+                return await ctx.send("Something went wrong while trying to retrieve the message.\nPlease try again later.")
+
+
 
     @command(name='bugReport')
     async def bug_report(self,ctx,*, message):

@@ -21,7 +21,7 @@ class Music(commands.Cog):
         self.bot:commands.Bot = bot
         self.players = {}
         self.messages = {}
-        self.no_cog_check = ['myplaylist',' pplaylist','serversongs','nowplaying','np']
+        self.no_cog_check = ['myplaylist',' pplaylist','serversongs','nowplaying','np','queue']
 
 
     async def load_command_aliases(self):
@@ -303,11 +303,6 @@ class Music(commands.Cog):
         await self.add_message_info(ctx,first_track[0])
         await player.play(first_track[0])
         return await self.load_playlist_songs(ctx,player,songs)
-        # for song in songs:
-        #     track = await wavelink.YouTubeTrack.search(song,return_first=True)
-        #     await self.add_message_info(ctx,track)
-        #     await player.queue.put_wait(track)
-        # return await ctx.message.add_reaction("🎶")
 
 
     @commands.command(name='listenTo',aliases=['聼'])

@@ -2,7 +2,7 @@ import json
 import discord,os,time,datetime, asyncio
 from discord.ext import commands, tasks
 from discord.ext.commands import Cog, command
-import pymongo
+from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 
 
 class Economy(Cog):
@@ -14,12 +14,12 @@ class Economy(Cog):
 
 
 
-    def connect_db(self):
+    async def connect_db(self):
         #TODO: setup local database if connection fails and save it 
-        client = pymongo.MongoClient(os.getenv("MONGO"))
+        client = MotorClient(os.getenv("MONGO"))
         database= client['Discord-Bot-Database']
         collections = database['Economy']
-        doc = collections.find_one("economy")
+        doc = await collections.find_one("economy")
         setattr(self,'econ',doc)
 
 

@@ -61,7 +61,7 @@ class MyHelpCommand(commands.MinimalHelpCommand):
             #language is Korean
             pass
 
-        if cog.qualified_name == 'Server':
+        if cog.qualified_name == 'Guild':
             prefix_commands = ['add-prefix','remove-prefix','view-prefixes']
             for cmd in self.context.bot.commands:
                 if cmd.name in prefix_commands:

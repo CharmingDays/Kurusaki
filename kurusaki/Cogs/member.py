@@ -18,11 +18,12 @@ class Member(commands.Cog):
         self.bot = bot
 
 
-    @commands.hybrid_command(name='member-events')
+    @commands.hybrid_group(name='member-events')
     async def member_events(self,ctx:Context):
         """
         command group responsible for dealing with `member_events`
         """
+
 
 
     @commands.command(hidden=True,enabled=True,aliases=['user.info'])

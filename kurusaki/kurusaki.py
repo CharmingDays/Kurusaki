@@ -3,7 +3,8 @@ from discord.ext import commands, tasks
 import discord.utils
 import os,random
 from dotenv import load_dotenv
-import os, pymongo
+import os
+from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 load_dotenv()
 
 
@@ -34,14 +35,14 @@ bot_status_types = {
 
 
 
-def connect_database():
-    client = pymongo.MongoClient(os.getenv("MONGO"))
+async def connect_database():
+    client = MotorClient(os.getenv("MONGO"))
     database = client['Discord-Bot-Database']
     collections = database['General']
     mongodb['client'] = client
     mongodb['collections'] = collections
-    mongodb['doc'] = collections.find_one({"_id":"bot_prefixes"})
-    mongodb['status'] = collections.find_one({"_id":"bot_status"})
+    mongodb['doc'] = await collections.find_one({"_id":"bot_prefixes"})
+    mongodb['status'] = await collections.find_one({"_id":"bot_status"})
 
 
 
@@ -63,7 +64,7 @@ kurusaki = commands.Bot(intents=KurusakiIntents,command_prefix=get_prefix,case_i
 
 @kurusaki.event
 async def setup_hook():
-    connect_database()
+    await connect_database()
 
 
 
@@ -111,7 +112,7 @@ async def on_ready():
     auto_change_bot_status.start()
     await load_bot_extensions()
     await kurusaki.tree.sync()
-    bot_statuses = mongodb['collections'].find_one({"_id":"bot_status"})['kurusaki']
+    bot_statuses = await mongodb['collections'].find_one({"_id":"bot_status"})['kurusaki']
     status_type = random.choice(list(bot_statuses.keys()))
     message = random.choice(bot_statuses[status_type])
     mongodb['bot-status'] = bot_statuses
@@ -123,7 +124,7 @@ async def on_ready():
 async def on_guild_join(guild):
     if str(guild.id) not in mongodb['doc']:
         mongodb['doc'][str(guild.id)] = ['s.']
-        mongodb['collections'].update_one({'_id':'bot_prefixes'},{'$set':{str(guild.id):['s.']}})
+        await mongodb['collections'].update_one({'_id':'bot_prefixes'},{'$set':{str(guild.id):['s.']}})
     
 
 
@@ -160,7 +161,7 @@ async def add_prefix(ctx,*,new_prefix:str):
     else:
         return await ctx.send(f"Prefix {new_prefix} already existing. NOTE: Bot prefixes are not case sensitive.")
     
-    mongodb['collections'].update_one({"_id":"bot_prefixes"},{"$addToSet":{str(ctx.guild.id):new_prefix}})
+    await mongodb['collections'].update_one({"_id":"bot_prefixes"},{"$addToSet":{str(ctx.guild.id):new_prefix}})
     return await ctx.send(f"New prefix **{new_prefix}** added for **{ctx.guild.name}**")
 
 
@@ -202,7 +203,7 @@ async def remove_prefix(ctx,*,prefix):
 
     index = mongodb['doc'][str(ctx.guild.id)].index(prefix)
     removedPrefix = mongodb['doc'][str(ctx.guild.id)].pop(index)
-    mongodb['collections'].update_one({'_id':'bot_prefixes'},{'$pull':{str(ctx.guild.id):{"$in":[prefix]}}})
+    await mongodb['collections'].update_one({'_id':'bot_prefixes'},{'$pull':{str(ctx.guild.id):{"$in":[prefix]}}})
     return await ctx.send(f"Removed prefix **{removedPrefix}** for **{ctx.guild.name}**")
 
 

@@ -10,7 +10,7 @@ bot = commands.Bot(intents=discord.Intents.all(),command_prefix='t.',case_insens
 
 
 async def load_cogs():
-    cogs = ['Cogs.events','Cogs.music','Cogs.help']
+    cogs = ['Cogs.utility']
     for i in cogs:
         await bot.load_extension(i) 
         print(i)

@@ -1,7 +1,7 @@
-from binhex import REASONABLY_LARGE
-import discord,pymongo,os,random,json
+import discord,os,random,json
 from discord.ext import commands
 from discord.ext.commands import command, Cog
+from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 
 class Guild(Cog,name="Server"):
     """
@@ -9,14 +9,15 @@ class Guild(Cog,name="Server"):
     """
     def __init__(self,bot):
         self.bot = bot
-        self.connect_database()
+        
+    async def cog_load(self) -> None:
+        await self.connect_database()
 
-
-    def connect_database(self):
-        client = pymongo.MongoClient(os.getenv('MONGO'))
+    async def connect_database(self):
+        client = MotorClient(os.getenv('MONGO'))
         database = client['Discord-Bot-Database']
         collection = database['General']
-        doc = collection.find_one({"_id":"member_join"})
+        doc = await collection.find_one({"_id":"member_join"})
         setattr(self,'eventData',doc)
         setattr(self,'collection',collection)
         setattr(self,'client',client)

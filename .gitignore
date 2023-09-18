@@ -8,6 +8,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+kurusaki/test_cog.py
 .gitignore
 build/
 develop-eggs/

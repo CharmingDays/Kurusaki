@@ -1,2 +1,3 @@
 Include logging for the events during bot loading and code errors
 Group async functions for `on_member_join` to run together
+Add custom help command reply for when users use language specific help Ex: s.도움 Music --> should reply back in Korean
