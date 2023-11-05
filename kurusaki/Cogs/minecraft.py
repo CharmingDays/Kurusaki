@@ -52,7 +52,6 @@ class Minecraft(commands.Cog):
                     # already auto dc
                     pass
                 del self.instances[userId]
-                print("Deleted connection")
 
     async def send_interaction(self,ctx:Context,message):
         """

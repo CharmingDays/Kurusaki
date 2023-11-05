@@ -5,15 +5,21 @@ import os,random
 from dotenv import load_dotenv
 import os
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
-load_dotenv()
+import logging
 
+
+
+
+
+load_dotenv()
+discord.utils.setup_logging(level=logging.INFO,root=True)
 
 
 
 extensions = [
-    'Cogs.member',
     'Cogs.help',
     'Cogs.music',
+    'Cogs.member',
     'Cogs.utility',
     'Cogs.events',
     'Cogs.text_channel',
@@ -60,8 +66,6 @@ kurusaki = commands.Bot(intents=KurusakiIntents,command_prefix=get_prefix,case_i
 
 
 
-
-
 @kurusaki.event
 async def setup_hook():
     await connect_database()
@@ -79,11 +83,6 @@ async def auto_change_bot_status():
 async def after_auto_status_loop():
     auto_change_bot_status.change_interval(minutes=random.randint(15,540))
 
-
-@kurusaki.event
-async def on_guild_join(guild:discord.Guild):
-    chan = kurusaki.get_channel(1103340937834414100)
-    await chan.send(f"{guild.name},{guild.owner}")
 
 
 
@@ -112,7 +111,9 @@ async def on_ready():
     auto_change_bot_status.start()
     await load_bot_extensions()
     await kurusaki.tree.sync()
-    bot_statuses = await mongodb['collections'].find_one({"_id":"bot_status"})['kurusaki']
+    collections = mongodb['collections']
+    doc = await collections.find_one({"_id":"bot_status"})
+    bot_statuses = doc['kurusaki']
     status_type = random.choice(list(bot_statuses.keys()))
     message = random.choice(bot_statuses[status_type])
     mongodb['bot-status'] = bot_statuses

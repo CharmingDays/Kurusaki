@@ -10,11 +10,12 @@ class MyHelpCommand(commands.MinimalHelpCommand):
         self.detector = Translator()
         super().__init__(**options)
         self.command_attrs['aliases'] = ['도움'] #Help command aliases
-        self.load_languages()
+        self.load_bot_info()
 
-    def load_languages(self):
-        file = open("D:\GithubRepo\Kurusaki\kurusaki\language.json",encoding='utf-8')
-        setattr(self,'lang',json.loads(file.read()))
+    def load_bot_info(self):
+        file = json.loads(open("D:\GithubRepo\Kurusaki\kurusaki\\bot_info.json",encoding='utf-8').read())
+        setattr(self,'lang',file['language'])
+        setattr(self,'hidden_func',file['hidden'])
 
 
     async def send_bot_help(self, command):
@@ -38,6 +39,8 @@ class MyHelpCommand(commands.MinimalHelpCommand):
         #         output+=f"{i}\n"
         #     emb = discord.Embed(color=discord.Color.random(),description=f"{output}")
         #     return await self.context.send(embed=emb)
+        if command.name.lower() in self.hidden_func['commands'] and self.context.author.id not in self.context.bot.owner_ids:
+            return await self.context.send("You don not have permission to view this command")
         command_doc=command.help
         command_doc = command_doc.replace("{command_prefix}",self.context.prefix)
         command_doc = command_doc.replace("{command_name}",command.name)
@@ -71,7 +74,7 @@ class MyHelpCommand(commands.MinimalHelpCommand):
             for cmd in cog.get_commands():
                 # NOTE: Can't get command info if disabled
                 if not cmd.enabled: continue;
-                if cmd.hidden:
+                if cmd.hidden or cmd.name.lower() in self.hidden_func['commands']:
                     if self.context.author.id in self.context.bot.owner_ids:
                         cog_help+=f"{self.lang['Music'][cmd.name]['name']}: - {cmd.short_doc}\n"
 

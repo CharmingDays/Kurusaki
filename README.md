@@ -20,7 +20,7 @@ Currently these are the "working" cogs for the bot
     'Cogs.utility',
     'Cogs.events',
     'Cogs.text_channel',
-    'Cogs.league'
+    'Cogs.minecraft'
 ]
 ```
 ## Enter `s.help` to view the commands that he bot.

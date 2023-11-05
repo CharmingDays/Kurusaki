@@ -1,3 +1,5 @@
-Include logging for the events during bot loading and code errors
 Group async functions for `on_member_join` to run together
 Add custom help command reply for when users use language specific help Ex: s.도움 Music --> should reply back in Korean
+Save settings into `language.json` and change `language.json` name and structure to contain bot infos
+
+Make mongodb optional (If mongodb URL not present, use local sqlite or JSON determined by the user)

@@ -75,11 +75,14 @@ class ServerEvents(commands.Cog):
         Function for handling welcome messages for servers
         """
         guildId:str = str(member.guild.id)
-        welcomeChannelId = self.mongoDoc[guildId]['welcome_messages']['channel']
-        if welcomeChannelId:
-            channel = member.guild.get_channel(welcomeChannelId)
-            message = random.choice(self.mongoDoc[guildId]['welcome_messages']['messages'])
-            return await channel.send(message)
+        try:
+            welcomeChannelId = self.mongoDoc[guildId]['welcome_messages']['channel']
+            if welcomeChannelId:
+                channel = member.guild.get_channel(welcomeChannelId)
+                message = random.choice(self.mongoDoc[guildId]['welcome_messages']['messages'])
+                return await channel.send(message)
+        except KeyError as error:
+            pass
 
 
 

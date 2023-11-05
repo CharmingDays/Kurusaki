@@ -19,7 +19,7 @@ class LeagueOfLegends(commands.Cog):
         
         return await ctx.send(message)
 
-    @commands.hybrid_group(name='League')
+    @commands.hybrid_group(name='league')
     async def league_group(self,ctx:Context):
         """
         The command group for organizing league of legends related commands
