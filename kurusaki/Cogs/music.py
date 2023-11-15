@@ -291,10 +291,9 @@ class Music(commands.Cog):
 
     @commands.command(name='shufflePlaylist')
     async def shuffle_playlist(self,ctx:Context):
-        songs = self.musicDoc['userPlaylist'][str(ctx.author.id)]
-        songs = random.shuffle(songs)
-        ctx.command = self.bot.get_command('loadplaylist')
-        await self.bot.invoke(ctx)
+        songs = self.musicDoc['userPlaylist'][str(ctx.author.id)].copy()
+        random.shuffle(songs)
+        await ctx.invoke(self.bot.get_command('loadplaylist'),songs=songs)
 
 
     
@@ -447,8 +446,8 @@ class Music(commands.Cog):
 
     
 
-    @commands.command(name='playlist',aliases=['내목록','我的音樂表'])
-    async def my_playlist(self,ctx:Context):
+    @commands.command(aliases=['내목록','我的音樂表'])
+    async def playlist(self,ctx:Context):
         """
         View your saved songs.
         {command_prefix}{command_name}
