@@ -1,5 +1,7 @@
-Group async functions for `on_member_join` to run together
-Add custom help command reply for when users use language specific help Ex: s.도움 Music --> should reply back in Korean
-Save settings into `language.json` and change `language.json` name and structure to contain bot infos
-
-Make mongodb optional (If mongodb URL not present, use local sqlite or JSON determined by the user)
+TODO Group async functions for `on_member_join` to run together
+TODO Add custom help command reply for when users use language specific help Ex: s.도움 Music --> should reply back in Korean
+TODO Save settings into `language.json` and change `language.json` name and structure to contain bot infos
+TODO make command to save youtube playlist into user's my_playlist
+TODO Make option to remove multiple songs from playlist and queue
+TODO Make mongodb optional (If mongodb URL not present, use local sqlite or JSON determined by the user)
+TODO Fix command usage monitor

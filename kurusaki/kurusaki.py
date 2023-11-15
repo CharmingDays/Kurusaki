@@ -22,9 +22,9 @@ extensions = [
     'Cogs.member',
     'Cogs.utility',
     'Cogs.events',
-    'Cogs.text_channel',
     'Cogs.league',
-    'Cogs.ocean_bottle'
+    # 'Cogs.ocean_bottle'
+    # 'Cogs.text_channel',
 ]
 
 
@@ -82,8 +82,6 @@ async def auto_change_bot_status():
 @auto_change_bot_status.after_loop
 async def after_auto_status_loop():
     auto_change_bot_status.change_interval(minutes=random.randint(15,540))
-
-
 
 
 

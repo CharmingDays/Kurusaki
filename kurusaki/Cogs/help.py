@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord.ext.commands import command
 import json
 from googletrans import Translator
-
+import platform
 
 class MyHelpCommand(commands.MinimalHelpCommand):
     def __init__(self, **options) -> None:
@@ -13,7 +13,11 @@ class MyHelpCommand(commands.MinimalHelpCommand):
         self.load_bot_info()
 
     def load_bot_info(self):
-        file = json.loads(open("D:\GithubRepo\Kurusaki\kurusaki\\bot_info.json",encoding='utf-8').read())
+        os_name = platform.system()
+        path ="D:\GithubRepo\Kurusaki\kurusaki\\bot_info.json"
+        if os_name.lower() == "linux":
+            path = "bot_info.json"
+        file = json.loads(open(path,encoding='utf-8').read())
         setattr(self,'lang',file['language'])
         setattr(self,'hidden_func',file['hidden'])
 
@@ -30,7 +34,7 @@ class MyHelpCommand(commands.MinimalHelpCommand):
 
 
     async def send_command_help(self, command):
-        #TODO: WAITING FOR TRANSLATIONS TO COMPLETE
+        #TODO  WAITING FOR TRANSLATIONS TO COMPLETE
         # if self.context.current_argument in self.lang['korean']['commandNames']:
         #     output= ""
         #     for key,i in self.lang[command.cog_name][command.name]['korean'].items():

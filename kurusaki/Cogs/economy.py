@@ -15,7 +15,7 @@ class Economy(Cog):
 
 
     async def connect_db(self):
-        #TODO: setup local database if connection fails and save it 
+        #TODO  setup local database if connection fails and save it 
         client = MotorClient(os.getenv("MONGO"))
         database= client['Discord-Bot-Database']
         collections = database['Economy']
@@ -31,7 +31,7 @@ class Economy(Cog):
 
     @Cog.listener('on_message')
     async def user_income(self,msg):
-        #TODO: make user income close to real life currency
+        #TODO  make user income close to real life currency
         points = msg.content.split()/ (len(msg.content.split())/1.5)
 
 

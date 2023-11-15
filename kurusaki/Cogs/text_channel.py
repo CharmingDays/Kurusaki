@@ -170,7 +170,7 @@ class TextChannel(commands.Cog):
 
     @commands.command(name='wordHistory')
     async def word_history(self,ctx,past_messages= 200, *, word: str):
-        #TODO: TEST THE COMMAND.
+        #TODO  TEST THE COMMAND.
         """
         Searches a text channel for a specific word with in last x messages
         past-messages(Optional): Number of messages to check

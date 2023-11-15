@@ -6,6 +6,7 @@ from discord.ext.commands import Context
 from discord.ext.commands.context import Context
 from motor.motor_asyncio import AsyncIOMotorClient
 
+
 class ServerEvents(commands.Cog):
     """
     Automate your server by auto adding roles, welcome messages and more!
@@ -13,7 +14,7 @@ class ServerEvents(commands.Cog):
     def __init__(self,bot):
         self.bot:commands.Bot = bot
         self.docId = {"_id":"serverEvents"}
-        self.cmdDoc = None
+        self.cmdDoc = {}
 
 
     async def setup_mongodb_connection(self):
@@ -29,6 +30,14 @@ class ServerEvents(commands.Cog):
         self.mongoClient = client
         self.mongoDoc = eventDoc
 
+    async def load_guild_ids(self):
+        guilds = [str(guild.id) for guild in self.bot.guilds]
+        for guild in guilds:
+            self.cmdDoc[guild] = {}
+
+    async def update_guild_id(self,guildId):
+        self.cmdDoc[str(guildId)] = {}
+
     async def cog_load(self):
         await self.setup_mongodb_connection()
 
@@ -38,7 +47,6 @@ class ServerEvents(commands.Cog):
             newData = {"welcome_messages":{'messages':[],'channel':0},'auto_roles':[]}
             self.mongoDoc[guildId] = newData
             await self.collection.update_one(self.docId,{"$set":{f"{guildId}":newData}})
-
 
 
 
@@ -163,7 +171,7 @@ class ServerEvents(commands.Cog):
 
         messageCheck = self.check_allowed_messages(message)
         if messageCheck != True:
-            # TODO: provide examples of allowed ones
+            # TODO  provide examples of allowed ones
             return await ctx.send(f"Your welcome message contains attributes that aren't allowed.\n{messageCheck}")
         guildId:str = str(ctx.guild.id)
         savedChannel = self.mongoDoc[guildId]['welcome_messages']['channel']

@@ -10,16 +10,14 @@ bot = commands.Bot(intents=discord.Intents.all(),command_prefix='t.',case_insens
 
 
 async def load_cogs():
-    cogs = ['Cogs.utility']
+    cogs = ['Cogs.music']
     for i in cogs:
         await bot.load_extension(i) 
         print(i)
 
-
 @bot.event
 async def on_ready():
     await load_cogs()
-    await bot.wait_until_ready()
     await bot.tree.sync()
     print(f'Loaded {bot.user.name}') 
 

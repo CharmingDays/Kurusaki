@@ -1,6 +1,7 @@
 import asyncio
 import json
 import math
+import random
 from typing import Optional
 import typing
 import discord
@@ -21,7 +22,7 @@ class Music(commands.Cog):
         self.bot:commands.Bot = bot
         self.players = {}
         self.messages = {}
-        self.no_cog_check = ['myplaylist',' pplaylist','serversongs','nowplaying','np','queue']
+        self.no_cog_check = ['playlist',' poplaylist','serversongs','nowplaying','np','queue']
 
 
     async def load_command_aliases(self):
@@ -34,12 +35,12 @@ class Music(commands.Cog):
     
     
     async def cog_load(self):
-        #TODO: LOAD ALIASES ON COG LOAD FROM language.json
         await self.setup_database()
         server_uri = f"http://{os.getenv('lavalink_server')}:{os.getenv('lavalink_port')}"
         node:Node = Node(uri=server_uri,password=os.getenv("lavalink_password"),id="kurusaki")
-        await NodePool.connect(client=self.bot,nodes=[node])
+        connectionNode = await NodePool.connect(client=self.bot,nodes=[node])
         self.node:Node = NodePool.get_node()
+        print(f"Node: {self.node.status}\nHost: {self.node._host}")
 
     async def setup_database(self):
         client = MotorClient(os.getenv("MONGO"))
@@ -83,7 +84,7 @@ class Music(commands.Cog):
             self.players[ctx.guild.id] = player #Cache the player 
             return
 
-        should_join = ctx.command.name.lower() in ['play','loadplaylist','listento']
+        should_join = ctx.command.name.lower() in ['play','loadplaylist','shuffleplaylist','listento']
         if not ctx.author.voice or not ctx.author.voice.channel:
             raise commands.CommandInvokeError("Please join a voice channel first.")
 
@@ -285,17 +286,44 @@ class Music(commands.Cog):
             await player.queue.put_wait(track[0])
         return await ctx.message.add_reaction('🎶')
 
+
+
+
+    @commands.command(name='shufflePlaylist')
+    async def shuffle_playlist(self,ctx:Context):
+        songs = self.musicDoc['userPlaylist'][str(ctx.author.id)]
+        songs = random.shuffle(songs)
+        ctx.command = self.bot.get_command('loadplaylist')
+        await self.bot.invoke(ctx)
+
+
+    
+    @shuffle_playlist.before_invoke 
+    async def before_shuffle_playlist(self,ctx:Context):
+        """
+        Check for if user has playlist saved in database
+        """
+        userPlaylist = self.musicDoc['userPlaylist']
+        if str(ctx.author.id) not in userPlaylist:
+            raise commands.CommandError("Please add songs to your playlist first.")
+
+    @shuffle_playlist.error
+    async def shuffle_playlist_error(self,ctx:Context,error:commands.CommandInvokeError):
+        return await ctx.send(error.original)
+
+
     @commands.command(name='loadPlaylist',aliases=['加載播放音樂表'])
-    async def load_playlist(self,ctx:Context):
+    async def load_playlist(self,ctx:Context,songs=None):
         """
         Adds the songs in your personal playlist to queue and start it if no song currently playing
         {command_prefix}{command_name}
         """
+        if not songs:
+            songs = self.musicDoc['userPlaylist'][str(ctx.author.id)]
         if str(ctx.author.id) not in self.musicDoc['userPlaylist']:
             return await ctx.send("You don't have any songs saved.")
         
         player:Player = self.players[ctx.guild.id]
-        songs = self.musicDoc['userPlaylist'][str(ctx.author.id)]
         if player.current:
             return await self.load_playlist_songs(ctx,player,songs)
         first_song  = songs.pop(0)
@@ -348,6 +376,23 @@ class Music(commands.Cog):
             return await ctx.message.add_reaction('✅')
         return await ctx.send("Audio already stopped.")
 
+
+    @commands.command(name='dcme')
+    async def disconnect_me(self,ctx:Context):
+        """
+        Disconnects bot from voice channel and the user if the user the user is alone after bot leaves
+        """
+        player:Player = self.players[ctx.guild.id]
+        del self.players[ctx.guild.id]
+        if player.current:
+            player.queue.clear()
+            await player.stop()
+        player.cleanup()
+        await player.disconnect()
+        voice_members = [member for member in ctx.author.voice.channel.members if not member.bot]
+        if len(voice_members) == 1:
+            await voice_members[0].move_to(channel=None)
+        return await ctx.message.add_reaction('✅')
 
 
     @commands.command(aliases=['dc','leave','끝','切斷'])
@@ -402,7 +447,7 @@ class Music(commands.Cog):
 
     
 
-    @commands.command(name='myPlaylist',aliases=['내목록','我的音樂表'])
+    @commands.command(name='playlist',aliases=['내목록','我的音樂表'])
     async def my_playlist(self,ctx:Context):
         """
         View your saved songs.

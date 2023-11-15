@@ -54,7 +54,7 @@ class OceanBottle(commands.Cog):
             return False
 
     async def bottle_generator(self):
-        #TODO: Auto calibrate the randomRange with frequency of commands being used
+        #TODO  Auto calibrate the randomRange with frequency of commands being used
         randomRange = random.choice(len(self.mongoDoc['bottles'])*100)
         try:
             message =self.mongoDoc['bottles'][randomRange]
@@ -66,7 +66,7 @@ class OceanBottle(commands.Cog):
     async def bottle_generator(self,ctx:Context):
         bottle = self.bottle_generator()
         if isinstance(bottle,str):
-            # TODO:Make message better embedded
+            # TODO Make message better embedded
             await self.remove_bottle(bottle)
             return ctx.author.send(bottle)
 

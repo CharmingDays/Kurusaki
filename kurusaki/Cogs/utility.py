@@ -12,12 +12,17 @@ class Utility(Cog):
     def __init__(self,bot) -> None:
         self.bot:commands.Bot = bot
         self.feed_back_channel_id = 1105158289446142012
+        self.utilityDb = {'users':[185181025104560128],'guild':[]}
 
     async def load_openai(self):
         openai.api_key = os.getenv("OPENAI_API_KEY")
 
     async def cog_load(self):
         await self.load_openai()
+
+    @Cog.listener('on_command')
+    async def command_correction(self,ctx:Context):
+        pass
 
     # async def cog_command_error(self, ctx: Context, error: commands.CommandError):
     #     if ctx.command.is_on_cooldown(ctx):
@@ -32,7 +37,7 @@ class Utility(Cog):
         """
         try:
             message = await ctx.channel.fetch_message(msgId)
-            #TODO: Update the message attributes and contents into database
+            #TODO  Update the message attributes and contents into database
             messageData = {'content':message.content,'id':message.id,'author':message.author,'date':message.created_at,'savedBy':ctx.author.id}
             updateFilter = {"$set":{f"{ctx.guild.id}.{message.id}":messageData}}
         except Exception as error:
@@ -45,6 +50,24 @@ class Utility(Cog):
 
 
 
+    @command(name='autoCorrect')
+    async def command_auto_correct(self,ctx:Context,auto_type="guild"):
+        guildId = ctx.guild.id
+        if auto_type.lower() not in ['guild','user']:
+            return await ctx.send(f"Option {auto_type} not found.\nUse option `guild` or `user`.")
+        
+        if auto_type.lower() == "user" and ctx.author.id not in self.utilityDb['users']:
+            self.utilityDb['users'].append(ctx.author.id)
+        
+        if auto_type.lower() == "guild" and ctx.guild.id not in self.utilityDb['guilds']:
+            self.utilityDb['guild'].append(guildId)
+
+        if auto_type.lower() == "guild":
+            self.utilityDb[auto_type].remove(guildId)
+        else:
+            self.utilityDb[auto_type].pop(ctx.author.id)
+
+
     @command(name='bugReport')
     async def bug_report(self,ctx,*, message):
         """
@@ -53,7 +76,7 @@ class Utility(Cog):
         {command_prefix}{command_name} The resume command isn't working
         NOTE: Try to include as much info as you can so :)
         """
-        #TODO: add to database
+        #TODO  add to database
         channel = self.bot.get_channel(self.feed_back_channel_id)
         await channel.send(f"`{ctx.author}({ctx.author.id}):` **{message}**")
         await ctx.send(f"Bug report has been sent, thank you for your feedback.!")
@@ -67,7 +90,7 @@ class Utility(Cog):
         message: The message to the developer about the feature 
         {command_prefix}{command_name} An anime command for generating random anime titles
         """
-        #TODO: add to database
+        #TODO  add to database
         channel = self.bot.get_channel(self.feed_back_channel_id)
         await channel.send(f"`{ctx.author}({ctx.author.id}):` **{message}**")
         return await ctx.send("Feature request sent!. Thank you.")

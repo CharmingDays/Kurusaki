@@ -10,3 +10,4 @@ mcrcon==0.7.0
 motor==3.1.2
 openai
 tiktoken
+PyNaCl

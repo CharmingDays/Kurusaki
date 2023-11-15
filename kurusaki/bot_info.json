@@ -3,6 +3,9 @@
         "commands":[],
         "cogs":["OwnerUtils"]
     },
+    "no_cog_check":[
+        "playlist"," poplaylist","serversongs","nowplaying","np","queue"
+    ],
     "language": {
         "CogNames": [
             "Member",

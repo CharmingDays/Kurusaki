@@ -118,7 +118,7 @@ class Minecraft(commands.Cog):
         The bot will reconnect or connect to the RCON server using the same credentials provided with this command.
         The bot will use this connection when members use custom commands. EX: daily login for item rewards 
         """
-        #TODO: Update the database after new changes made
+        #TODO  Update the database after new changes made
         guildId = str(ctx.guild.id)
         if password.strip() == "":
             return await self.send_interaction(ctx,"Please include a password")
