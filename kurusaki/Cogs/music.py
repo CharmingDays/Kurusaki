@@ -333,16 +333,21 @@ class Music(commands.Cog):
 
 
     @commands.command(name='listenTo',aliases=['聼'])
-    async def listen_to(self,ctx:Context,guildId:int):
+    async def listen_to(self,ctx:Context,guildId:int,trackPosition:int=0):
         """
         Listen along to the songs another server is playing
         {command_prefix}{command_name} serverId
         """
+        if trackPosition not in [0,1]:
+            return await ctx.send("Please use `1` to play at same track position or `0` to start from beginning")
         targetPlayer:Player = self.players[guildId]
+        if trackPosition == 1:
+            trackPosition = targetPlayer.last_position
         player:Player = self.players[ctx.guild.id]
-        await self.add_message_info(ctx,player.current)
-        await player.play(targetPlayer.current)
-        await player.seek(targetPlayer.current.position) 
+        songId = targetPlayer.current.identifier
+        track:wavelink.Playable = await wavelink.YouTubeTrack.search(f"https://www.youtube.com/watch?v={songId}")
+        await self.add_message_info(ctx,track[0])
+        await player.play(track[0],start=trackPosition)
 
 
     @commands.command(name='serverSongs',aliases=['목록','服務器歌曲'])
