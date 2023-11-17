@@ -1,0 +1,13 @@
+[Unit]
+Description=Kurusaki discord bot service for starting up the bot
+After=network.target
+
+[Service]
+WorkingDirectory=/home/ubuntu/kurusaki
+ExecStart=python3 kurusaki.py
+Restart=always
+RestartSec=30
+User=ubuntu
+
+[Install]
+WantedBy=multi-user.target

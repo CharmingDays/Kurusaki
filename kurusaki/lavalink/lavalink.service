@@ -1,0 +1,15 @@
+[Unit]
+Description=Lavalink server for music discord bots
+After=network.target
+
+[Service]
+WorkingDirectory=/home/ubuntu/lavalink
+ExecStart=java -jar -Xmx5G -Xms2G Lavalink.jar
+Restart=on-failure
+RestartSec=30
+User=ubuntu
+
+
+
+[Install]
+WantedBy=multi-user.target

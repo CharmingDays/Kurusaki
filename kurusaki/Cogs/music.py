@@ -336,7 +336,10 @@ class Music(commands.Cog):
     async def listen_to(self,ctx:Context,guildId:int,trackPosition:int=0):
         """
         Listen along to the songs another server is playing
+        guildId(required): The serverId that you're trying to listen along with
+        trackPosition(optional): Whether to start track from beginning (`0`) or play at the same track position (`1`) as the other server.
         {command_prefix}{command_name} serverId
+        {command_prefix}{command_name} 823742837412 1
         """
         if trackPosition not in [0,1]:
             return await ctx.send("Please use `1` to play at same track position or `0` to start from beginning")
