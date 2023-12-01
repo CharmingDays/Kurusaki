@@ -9,9 +9,9 @@ from discord.ext.commands.context import Context
 import wavelink,os
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 from discord.ext import commands
-from wavelink import NodePool,Player,Node,TrackEventPayload
-from wavelink.exceptions import NoTracksError
+from wavelink import Player,Node
 from discord.ext import tasks
+import spacy
 
 
 class Music(commands.Cog):
@@ -37,10 +37,10 @@ class Music(commands.Cog):
     async def cog_load(self):
         await self.setup_database()
         server_uri = f"http://{os.getenv('lavalink_server')}:{os.getenv('lavalink_port')}"
-        node:Node = Node(uri=server_uri,password=os.getenv("lavalink_password"),id="kurusaki")
-        connectionNode = await NodePool.connect(client=self.bot,nodes=[node])
-        self.node:Node = NodePool.get_node()
-        print(f"Node: {self.node.status}\nHost: {self.node._host}")
+        node:Node = Node(uri=server_uri,password=os.getenv("lavalink_password"),identifier='kurusaki')
+        await wavelink.Pool.connect(client=self.bot,nodes=[node])
+        self.node:Node = wavelink.Pool.get_node('kurusaki')
+        print(f"Node: {self.node}")
 
     async def setup_database(self):
         client = MotorClient(os.getenv("MONGO"))
@@ -108,7 +108,7 @@ class Music(commands.Cog):
             player:Player = self.players[guild_id]
         except KeyError:
             return
-        if not player.current and player.queue.count == 0:
+        if not player.current and len(player.queue) == 0:
             # clean up the player and clear queue
             player.cleanup()
             await player.disconnect()
@@ -137,7 +137,7 @@ class Music(commands.Cog):
 
 
 
-    async def send_embed(self,payload:TrackEventPayload,track:wavelink.Playable):
+    async def send_embed(self,payload:wavelink.TrackStartEventPayload,track:wavelink.Player):
         """
         Sends the embed to channel when a new song is playing
         Embed includes:
@@ -153,7 +153,7 @@ class Music(commands.Cog):
         channel = guild.get_channel(info['channel'])
         emb = discord.Embed(title=track.title,url=track.uri,color=discord.Color.random())
         emb.set_footer(text=info['author'],icon_url=info['icon'])
-        emb.add_field(name='Duration',value=f"{self.convert_to_minutes(track.duration)}")
+        emb.add_field(name='Duration',value=f"{self.convert_to_minutes(track.length)}")
         emb.add_field(name='Volume',value=payload.player.volume)
         emb.set_thumbnail(url=f"https://img.youtube.com/vi/{track.identifier}/0.jpg")
         if channel.last_message_id == self.messages[guild.id]['last_message']:
@@ -175,22 +175,26 @@ class Music(commands.Cog):
             pass
 
     @commands.Cog.listener()
-    async def on_wavelink_track_start(self,payload:TrackEventPayload):
+    async def on_wavelink_track_start(self,payload:wavelink.TrackStartEventPayload):
         """
         Instructions to run when new track starts
         """
+        player: wavelink.Player | None = payload.player
+        if not player:
+            # TODO handle error when player is not found
+            return 
         guildVolume = self.musicDoc[str(payload.player.guild.id)]['vol']
-        if payload.player.volume != guildVolume:
-            await payload.player.set_volume(guildVolume)
+        if player.volume != guildVolume:
+            await player.set_volume(guildVolume)
         await self.send_embed(payload,payload.track)
 
 
 
     @commands.Cog.listener()
-    async def on_wavelink_track_end(self,payload:TrackEventPayload):
-        player:Player = payload.player
+    async def on_wavelink_track_end(self,payload:wavelink.TrackEndEventPayload):
+        player: wavelink.Player | None = payload.player
         if player:
-            if player.queue.count != 0:
+            if len(player.queue) != 0:
                 # paly next song in queue
                 next_song = await player.queue.get_wait()
                 return await player.play(next_song)
@@ -247,14 +251,39 @@ class Music(commands.Cog):
             self.messages[ctx.guild.id] = {'last_message':None,track.identifier:{'author':ctx.author.display_name,'icon':ctx.author.display_avatar.url,'channel':ctx.channel.id}}
 
 
+
+    async def match_title(self,title):
+        # iterate through the tracks list and find the closest matching title
+        all_tracks = await wavelink.Playable.search(title,source=wavelink.TrackSource.YouTube)
+        nlp = spacy.load('en_core_web_md')
+        query = nlp(title)
+        result = {'accuracy':0,'title':all_tracks[0].title,'index':0}
+        for index,track in enumerate(all_tracks):
+            target = track.title
+            target.replace("-",'')
+            vector = query.similarity(nlp(target))
+            if vector > result['accuracy']:
+                result['accuracy'] = vector
+                result['title'] = track.title
+                result['index'] = index
+
+        return all_tracks[result['index']]
+
+
+
+
+
+
     @commands.hybrid_command(aliases=['재생','開始'])
-    async def play(self,ctx:commands.Context,*,track:wavelink.YouTubeTrack):
+    async def play(self,ctx:commands.Context,*,query:str):
         """
         Search and play a song in a voice channel or add song to queue.
         track(required): The title of the song or url to paly from Youtube
         {command_prefix}{command_name} dududu! yaorenmao
         """
-        player:Player = self.players[ctx.guild.id]
+        # TODO: Loop through the tracks and find title with highest match
+        track = await self.match_title(query)
+        player:Player = typing.cast(Player,ctx.voice_client)
         await self.add_message_info(ctx,track)
         if ctx.interaction != None:
             if player.current:
@@ -265,7 +294,7 @@ class Music(commands.Cog):
         if player.current:
             # Queue song
             emb = discord.Embed(title="Song Queued",description=f"[{track.title}]({track.uri})",color=discord.Color.random())
-            emb.add_field(name='Duration',value=self.convert_to_minutes(track.duration))
+            emb.add_field(name='Duration',value=self.convert_to_minutes(track.length))
             emb.set_footer(text=ctx.author.display_name,icon_url=ctx.author.display_avatar.url)
             await player.queue.put_wait(track)
             return await ctx.send(embed=emb)
@@ -274,14 +303,16 @@ class Music(commands.Cog):
             # Start first song
             return await player.play(track)
     
-    @play.error
-    async def play_error(self,ctx:Context,error):
-        if isinstance(error.original,NoTracksError):
-            return await self.send_interaction(ctx,error.original.args[0])
+    # @play.error
+    # async def play_error(self,ctx:Context,error):
+    #     # TODO: Find what error is being produced when this error handler is invoked
+    #     if isinstance(error.original,wavelink.LavalinkLoadException):
+    #         wavelink.TrackExceptionEventPayload
+    #         return await self.send_interaction(ctx,error.original.args[0])
 
     async def load_playlist_songs(self,ctx:Context,player:Player,songs:typing.List[str]):
         for song in songs:
-            track:wavelink.Playable = await wavelink.YouTubeTrack.search(f"https://www.youtube.com/watch?v={song['id']}")
+            track:wavelink.Playable = await wavelink.Playable.search(f"https://www.youtube.com/watch?v={song['id']}")
             await self.add_message_info(ctx,track[0])
             await player.queue.put_wait(track[0])
         return await ctx.message.add_reaction('🎶')
@@ -326,7 +357,7 @@ class Music(commands.Cog):
         if player.current:
             return await self.load_playlist_songs(ctx,player,songs)
         first_song  = songs.pop(0)
-        first_track = await wavelink.YouTubeTrack.search(f"https://www.youtube.com/watch?v={first_song['id']}")
+        first_track = await wavelink.Playable.search(f"https://www.youtube.com/watch?v={first_song['id']}")
         await self.add_message_info(ctx,first_track[0])
         await player.play(first_track[0])
         return await self.load_playlist_songs(ctx,player,songs)
@@ -507,7 +538,7 @@ class Music(commands.Cog):
         """
         position*=1000
         player:Player = self.players[ctx.guild.id]
-        if position >= player.current.duration:
+        if position >= player.current.length:
             return await ctx.send("Position exceeds or equals to song duration")
         
         return await player.seek(position)
@@ -523,11 +554,11 @@ class Music(commands.Cog):
         """
         # skip to the next song or to a specific position in queue
         player:Player = self.players[ctx.guild.id]
-        if player.queue.count ==0:
+        if len(player.queue) ==0:
             return await ctx.send("No songs in queue to skip to.")
         if position:
-            if position > player.queue.count:
-                return await ctx.send(f"Position exceeds queue count of {player.queue.count}")
+            if position > len(player.queue):
+                return await ctx.send(f"Position exceeds queue count of {len(player.queue)}")
             else:
                 songs = [song for song in player.queue]
                 player.queue.clear()
@@ -541,6 +572,7 @@ class Music(commands.Cog):
 
     @commands.command(aliases=['일시정지','暫停'])
     async def pause(self,ctx:Context):
+        # TODO FIX ME
         """
         Pause the music
         {command_prefix}{command_name}
@@ -559,6 +591,7 @@ class Music(commands.Cog):
 
     @commands.command(aliases=['재개','繼續'])
     async def resume(self,ctx:Context):
+        # TODO: FIX ME
         """
         Resume the paused audio 
         {command_prefix}{command_name}
@@ -583,24 +616,26 @@ class Music(commands.Cog):
         player:Player = self.players[ctx.guild.id]
         if not player:
             return await ctx.send("No audio playing.")
-        if player.queue.loop:
-            player.queue.loop = False
+        if player.queue.mode.loop:
+            player.queue.mode.loop = False
             return await ctx.send("Stopped loop")
-        player.queue.loop = True
+        player.queue.mode.loop = True
         return await ctx.send("Looping current song.")
 
 
     @commands.command(aliases=['vol','볼륨','音量'])
-    async def volume(self,ctx:Context,_volume:int):
+    async def volume(self,ctx:Context,_volume:typing.Optional[int]):
         """
         Set the volume of the bot.
         {command_prefix}{command_name} volume
-        volume(required): The volume for the music playing
-        {command_prefix}{command_name} 100
+        volume(optional): The volume for the music playing. If not provide, return current volume
+        {command_prefix}{command_name} 200
         NOTE: max is 100, and makes it inaudible.
         """
         # NOTE: Rate limit volume updating later when more servers added
         player:Player = self.players[ctx.guild.id]
+        if not _volume:
+            return await ctx.send(f'🎵: **{player.volume}%**')
         if _volume >200:
             _volume = 200
             await ctx.send("Set volume to 200 because it can't exceed 200.")
