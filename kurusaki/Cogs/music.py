@@ -281,7 +281,6 @@ class Music(commands.Cog):
         track(required): The title of the song or url to paly from Youtube
         {command_prefix}{command_name} dududu! yaorenmao
         """
-        # TODO: Loop through the tracks and find title with highest match
         track = await self.match_title(query)
         player:Player = typing.cast(Player,ctx.voice_client)
         await self.add_message_info(ctx,track)
@@ -572,7 +571,6 @@ class Music(commands.Cog):
 
     @commands.command(aliases=['일시정지','暫停'])
     async def pause(self,ctx:Context):
-        # TODO FIX ME
         """
         Pause the music
         {command_prefix}{command_name}
@@ -582,16 +580,15 @@ class Music(commands.Cog):
         if not player.current:
             return await ctx.send("No audio currently playing")
         
-        if player.is_paused():
+        if player.paused:
             return await ctx.send("Already paused")
         
-        await player.pause()
+        await player.pause(True)
         return await ctx.message.add_reaction('⏸')
 
 
     @commands.command(aliases=['재개','繼續'])
     async def resume(self,ctx:Context):
-        # TODO: FIX ME
         """
         Resume the paused audio 
         {command_prefix}{command_name}
@@ -600,15 +597,16 @@ class Music(commands.Cog):
         if not player.current:
             return await ctx.send('No audio in track')
         
-        if not player.is_paused():
+        if not player.paused:
             return await ctx.send("Audio already playing.")
 
-        await player.resume()
+        await player.pause(False)
         return await ctx.message.add_reaction('▶️')
 
 
     @commands.command(aliases=['반복','重複'])
     async def repeat(self,ctx:Context):
+        # TODO: FIX ME. Repeat now working
         """
         Set song loop on/off.
         {command_prefix}{command_name}
@@ -616,7 +614,7 @@ class Music(commands.Cog):
         player:Player = self.players[ctx.guild.id]
         if not player:
             return await ctx.send("No audio playing.")
-        if player.queue.mode.loop:
+        if player.queue.mode.loop is True:
             player.queue.mode.loop = False
             return await ctx.send("Stopped loop")
         player.queue.mode.loop = True
@@ -635,7 +633,7 @@ class Music(commands.Cog):
         # NOTE: Rate limit volume updating later when more servers added
         player:Player = self.players[ctx.guild.id]
         if not _volume:
-            return await ctx.send(f'🎵: **{player.volume}%**')
+            return await ctx.send(f'Volume: **{player.volume}%**')
         if _volume >200:
             _volume = 200
             await ctx.send("Set volume to 200 because it can't exceed 200.")
