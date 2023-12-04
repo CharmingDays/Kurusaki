@@ -194,13 +194,13 @@ class Music(commands.Cog):
     async def on_wavelink_track_end(self,payload:wavelink.TrackEndEventPayload):
         player: wavelink.Player | None = payload.player
         if player:
+            if player.queue.mode.loop == True:
+                return await player.play(payload.track)
+            
             if len(player.queue) != 0:
                 # paly next song in queue
                 next_song = await player.queue.get_wait()
                 return await player.play(next_song)
-            if player.queue.loop:
-                return await player.play(payload.track)
-            
             if not player.current:
                 return await self.should_disconnect(player.guild.id)
 
@@ -255,7 +255,7 @@ class Music(commands.Cog):
     async def match_title(self,title):
         # iterate through the tracks list and find the closest matching title
         all_tracks = await wavelink.Playable.search(title,source=wavelink.TrackSource.YouTube)
-        nlp = spacy.load('en_core_web_md')
+        nlp = spacy.load('en_core_web_lg')
         query = nlp(title)
         result = {'accuracy':0,'title':all_tracks[0].title,'index':0}
         for index,track in enumerate(all_tracks):
@@ -551,6 +551,7 @@ class Music(commands.Cog):
         {command_prefix}{command_name}
         {command_prefix}{command_name} 3
         """
+        # TODO Skipping to wrong queue or `shuffleplaylist` adding wrong queue positions
         # skip to the next song or to a specific position in queue
         player:Player = self.players[ctx.guild.id]
         if len(player.queue) ==0:
@@ -606,7 +607,6 @@ class Music(commands.Cog):
 
     @commands.command(aliases=['반복','重複'])
     async def repeat(self,ctx:Context):
-        # TODO: FIX ME. Repeat now working
         """
         Set song loop on/off.
         {command_prefix}{command_name}
@@ -614,7 +614,7 @@ class Music(commands.Cog):
         player:Player = self.players[ctx.guild.id]
         if not player:
             return await ctx.send("No audio playing.")
-        if player.queue.mode.loop is True:
+        if player.queue.mode.loop == True:
             player.queue.mode.loop = False
             return await ctx.send("Stopped loop")
         player.queue.mode.loop = True
