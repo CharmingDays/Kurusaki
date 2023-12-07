@@ -41,7 +41,7 @@ class ServerEvents(commands.Cog):
 
     async def cog_load(self):
         await self.setup_mongodb_connection()
-        self.command_list = self.bot.all_commands()
+        # self.command_list = self.bot.all_commands()
 
 
     async def cog_before_invoke(self, ctx: Context):

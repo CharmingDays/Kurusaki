@@ -194,6 +194,10 @@ class Music(commands.Cog):
     async def on_wavelink_track_end(self,payload:wavelink.TrackEndEventPayload):
         player: wavelink.Player | None = payload.player
         if player:
+            if player.playing:
+                # NOTE: song skipped via `skip` command
+                return
+            
             if player.queue.mode.loop == True:
                 return await player.play(payload.track)
             
@@ -336,6 +340,10 @@ class Music(commands.Cog):
 
     @commands.command(name='shufflePlaylist')
     async def shuffle_playlist(self,ctx:Context):
+        """
+        Shuffles the songs in your playlist and start playing.
+        {command_prefix}{command_name}
+        """
         songs = self.musicDoc['userPlaylist'][str(ctx.author.id)].copy()
         random.shuffle(songs)
         await ctx.invoke(self.bot.get_command('loadplaylist'),songs=songs)
@@ -572,8 +580,6 @@ class Music(commands.Cog):
         {command_prefix}{command_name}
         {command_prefix}{command_name} 3
         """
-        # TODO Skipping to wrong queue or `shuffleplaylist` adding wrong queue positions
-        # skip to the next song or to a specific position in queue
         player:Player = self.players[ctx.guild.id]
         if len(player.queue) ==0:
             return await ctx.send("No songs in queue to skip to.")
@@ -581,13 +587,11 @@ class Music(commands.Cog):
             if position > len(player.queue):
                 return await ctx.send(f"Position exceeds queue count of {len(player.queue)}")
             else:
-                songs = [song for song in player.queue]
-                player.queue.clear()
-                await player.queue.put_wait(songs.pop(position-1))
-                for song in songs:
-                    await player.queue.put_wait(song)
-                await player.stop()
-        await player.stop()
+                new_track = player.queue[position-1]
+                await player.queue.delete(position-1)
+                await player.play(new_track)
+        else:
+            await player.stop()
         return await ctx.message.add_reaction('⏭')
 
 
