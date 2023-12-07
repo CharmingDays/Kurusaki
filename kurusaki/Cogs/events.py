@@ -15,6 +15,7 @@ class ServerEvents(commands.Cog):
         self.bot:commands.Bot = bot
         self.docId = {"_id":"serverEvents"}
         self.cmdDoc = {}
+        self.command_list= []
 
 
     async def setup_mongodb_connection(self):
@@ -40,6 +41,8 @@ class ServerEvents(commands.Cog):
 
     async def cog_load(self):
         await self.setup_mongodb_connection()
+        self.command_list = self.bot.all_commands()
+
 
     async def cog_before_invoke(self, ctx: Context):
         guildId:str = str(ctx.guild.id)
@@ -94,21 +97,21 @@ class ServerEvents(commands.Cog):
 
 
 
-    @commands.Cog.listener('on_command')
-    async def command_use_counter(self,ctx:Context):
-        ctx
-        commandName = ctx.command.name.lower()
-        guildId = str(ctx.guild.id)
+    # @commands.Cog.listener('on_command')
+    # async def command_use_counter(self,ctx:Context):
+    #     # TODO add handler for if guildId not in database and update the guildId into mongodb
+    #     # TODO validate command names first before adding it into database
+    #     commandName = ctx.command.name.lower()
+    #     guildId = str(ctx.guild.id)
+    #     if commandName in self.cmdDoc['commands']:
+    #         self.cmdDoc['commands'][commandName]['guilds'][guildId]+=1
+    #         updateFilter  = {"$inc":{f"commands.{commandName}.guilds.{guildId}":+1}}
+    #         await self.collection.update_one({"_id":"command_usage"},updateFilter)
 
-        if commandName in self.cmdDoc['commands']:
-            self.cmdDoc['commands'][commandName]['guilds'][guildId]+=1
-            updateFilter  = {"$inc":{f"commands.{commandName}.guilds.{guildId}":+1}}
-            await self.collection.update_one({"_id":"command_usage"},updateFilter)
-
-        if commandName not in self.cmdDoc['commands']:
-            self.cmdDoc['commands'][commandName] = {"guilds":{guildId:1}}
-            updateFilter = {"$set":{f"commands.{commandName}":self.cmdDoc['commands'][commandName]}}
-            await self.collection.update_one({"_id":"command_usage"},updateFilter)
+    #     if commandName not in self.cmdDoc['commands']:
+    #         self.cmdDoc['commands'][commandName] = {"guilds":{guildId:1}}
+    #         updateFilter = {"$set":{f"commands.{commandName}":self.cmdDoc['commands'][commandName]}}
+    #         await self.collection.update_one({"_id":"command_usage"},updateFilter)
   
   
     async def custom_server_events(self,member:discord.Member):

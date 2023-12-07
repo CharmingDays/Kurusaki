@@ -224,6 +224,7 @@ class Music(commands.Cog):
         Check what songs are currently in queue
         {command_prefix}{command_name}
         """
+        # TODO add error handler for when message limit > 2000
         # check songs in queue 
         player:Player = self.players[ctx.guild.id]
         if len(player.queue) == 0:
@@ -252,9 +253,8 @@ class Music(commands.Cog):
 
 
 
-    async def match_title(self,title):
+    async def match_title(self,title:str,all_tracks:typing.Union[wavelink.Playable,wavelink.Playlist]):
         # iterate through the tracks list and find the closest matching title
-        all_tracks = await wavelink.Playable.search(title,source=wavelink.TrackSource.YouTube)
         nlp = spacy.load('en_core_web_lg')
         query = nlp(title)
         result = {'accuracy':0,'title':all_tracks[0].title,'index':0}
@@ -269,10 +269,18 @@ class Music(commands.Cog):
 
         return all_tracks[result['index']]
 
-
-
-
-
+    async def send_queue_message(self,ctx:Context,player:wavelink.Player,track:wavelink.Playable,embed_title=None):
+        if embed_title == None:
+            embed_title = track.title
+        if ctx.interaction != None:
+            # if player.current:
+            await player.queue.put_wait(track)
+            return await ctx.interaction.response.send_message(f'Added {track.title} to queue.',delete_after=60,ephemeral=True)
+        emb = discord.Embed(title="Song Queued",description=f"[{embed_title}]({track.uri})",color=discord.Color.random())
+        emb.set_thumbnail(url=f"https://img.youtube.com/vi/{track.identifier}/0.jpg")
+        emb.add_field(name='Duration',value=self.convert_to_minutes(track.length))
+        emb.set_footer(text=ctx.author.display_name,icon_url=ctx.author.display_avatar.url)
+        return await ctx.send(embed=emb)
 
     @commands.hybrid_command(aliases=['재생','開始'])
     async def play(self,ctx:commands.Context,*,query:str):
@@ -281,25 +289,32 @@ class Music(commands.Cog):
         track(required): The title of the song or url to paly from Youtube
         {command_prefix}{command_name} dududu! yaorenmao
         """
-        track = await self.match_title(query)
+        search_result = await wavelink.Playable.search(query)
         player:Player = typing.cast(Player,ctx.voice_client)
+        if isinstance(search_result,wavelink.Playlist):
+            first_track=search_result.tracks.pop(0)
+            await self.add_message_info(ctx,first_track)
+            for song in search_result.tracks:
+                await player.queue.put_wait(song)
+                await self.add_message_info(ctx,song)
+            
+            await player.play(first_track)
+            return await self.send_queue_message(ctx,player,first_track,search_result.name)
+        track = await self.match_title(query,search_result)
         await self.add_message_info(ctx,track)
-        if ctx.interaction != None:
-            if player.current:
-                await ctx.interaction.response.send_message(f'Added {track.title} to queue.',delete_after=60,ephemeral=True)
-            else:
-                await ctx.interaction.response.send_message(f'Now playing {track.title}',ephemeral=True,delete_after=60)
 
         if player.current:
+            # audio playing
             # Queue song
-            emb = discord.Embed(title="Song Queued",description=f"[{track.title}]({track.uri})",color=discord.Color.random())
-            emb.add_field(name='Duration',value=self.convert_to_minutes(track.length))
-            emb.set_footer(text=ctx.author.display_name,icon_url=ctx.author.display_avatar.url)
             await player.queue.put_wait(track)
-            return await ctx.send(embed=emb)
+            return await self.send_queue_message(ctx,player,track)
+            
 
         if not player.current:
             # Start first song
+            if ctx.interaction != None:
+                return await ctx.interaction.response.send_message(f'Now playing {track.title}',ephemeral=True,delete_after=60)
+            await self.send_queue_message(ctx,player,track)
             return await player.play(track)
     
     # @play.error
@@ -483,6 +498,12 @@ class Music(commands.Cog):
         return await ctx.send(f"Removed song **{removed['title']}** from your playlist.")
 
     
+    @commands.command()
+    async def command(self,ctx,*,playlist_url):
+        """
+        loads the songs from a youtube playlist into your discord bot playlist
+        """
+
 
     @commands.command(aliases=['내목록','我的音樂表'])
     async def playlist(self,ctx:Context):
@@ -642,6 +663,10 @@ class Music(commands.Cog):
         await self.mongoCollection.update_one({"_id":"music"},{"$set":{f"{ctx.guild.id}.vol":_volume}})
         return await ctx.send(f"Set volume to {_volume}")
 
+
+
+from dotenv import load_dotenv
+load_dotenv()
 
 async def setup(bot):
     await bot.add_cog(Music(bot))

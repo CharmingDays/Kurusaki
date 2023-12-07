@@ -5,3 +5,4 @@ TODO make command to save youtube playlist into user's my_playlist
 TODO Make option to remove multiple songs from playlist and queue
 TODO Make mongodb optional (If mongodb URL not present, use local sqlite or JSON determined by the user)
 TODO Fix command usage monitor
+TODO loo into whether it's worth to use default wavelink Queue system
