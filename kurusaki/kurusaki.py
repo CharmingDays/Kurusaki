@@ -1,3 +1,4 @@
+import json
 import discord
 from discord.ext import commands, tasks
 import discord.utils
@@ -64,6 +65,21 @@ def get_prefix(bot,ctx):
 
 kurusaki = commands.Bot(intents=KurusakiIntents,command_prefix=get_prefix,case_insensitive=True,owner_ids=[185181025104560128])
 
+
+async def load_command_aliases(languages):
+    for command_name,language_aliases in languages['Music'].items():
+        cmd = kurusaki.get_command(command_name)
+        for lang_alias in language_aliases.values():
+            if lang_alias['name'] not in cmd.aliases:
+                cmd.aliases.append(lang_alias['name'])
+                print("Added alias:",lang_alias['name'])
+                kurusaki.remove_command(command_name)
+                kurusaki.add_command(cmd)
+
+
+async def load_bot_info():
+    bot_info = json.loads(open('D:/GithubRepo/Kurusaki/kurusaki/bot_info.json','r',encoding='utf-8').read())
+    await load_command_aliases(bot_info['languages'])
 
 
 @kurusaki.event
@@ -212,6 +228,7 @@ async def load_bot_extensions():
     for ext in extensions:
         await kurusaki.load_extension(ext)
         print(ext)
+    await load_bot_info()
 
 
 

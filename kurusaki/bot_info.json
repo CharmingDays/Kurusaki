@@ -6,7 +6,7 @@
     "no_cog_check":[
         "playlist"," poplaylist","serversongs","nowplaying","np","queue"
     ],
-    "language": {
+    "languages": {
         "CogNames": [
             "Member",
             "Music",
@@ -62,199 +62,173 @@
         "Music": {
             "loadPlaylist": {
                 "mandarin": {
-                    "name": "加載播放音樂表"
+                    "name": "加載播放音樂表",
+                    "example": "{command_prefix}{command_name}"
                 }
             },
             "listenTo": {
                 "mandarin": {
-                    "name": "聼"
+                    "name": "聼",
+                    "example":"{command_prefix}{command_name} 2342389472394"
                 }
             },
             "play": {
                 "korean": {
                     "name": "재생",
-                    "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 찬열, 펀치"]
                 },
                 "mandarin": {
-                    "name": "開始"
+                    "name": "開始",
+                    "examples":["{command_prefix}{command_name}","{command_prefix}{command_name} 芒种"]
                 }
             },
             "skip": {
                 "korean": {
                     "name": "스킵",
-                    "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 4"]
                 },
                 "mandarin": {
-                    "name": "跳過"
+                    "name": "跳過",
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 4"]
                 }
             },
             "seek": {
                 "korean": {
                     "name": "시간",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 102"]
                 },
                 "mandarin": {
-                    "name": "尋找"
+                    "name": "尋找",
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 102"]
                 }
             },
             "repeat": {
                 "korean": {
                     "name": "반복",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples":["{command_prefix}{command_name}"]
                 },
                 "mandarin": {
-                    "name": "重複"
+                    "name": "重複",
+                    "examples":["{command_prefix}{command_name}"]
                 }
             },
             "resume": {
                 "korean": {
                     "name": "재개",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}"]
                 },
                 "mandarin": {
-                    "name": "繼續"
+                    "name": "繼續",
+                    "examples": ["{command_prefix}{command_name}"]
                 }
             },
             "pause": {
                 "korean": {
                     "name": "일시정지",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}"]
                 },
                 "mandarin": {
-                    "name": "暫停"
+                    "name": "暫停",
+                    "examples": ["{command_prefix}{command_name}"]
                 }
             },
             "volume": {
                 "korean": {
                     "name": "볼륨",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}"]
                 },
                 "mandarin": {
-                    "name": "音量"
+                    "name": "音量",
+                    "examples": ["{command_prefix}{command_name}"]
                 }
             },
             "popQueue": {
                 "korean": {
                     "name": "삭제",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 3"]
                 },
                 "mandarin": {
-                    "name": "把歌從隊列移除"
+                    "name": "把歌從隊列移除",
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 3"]
                 }
             },
             "stop": {
                 "mandarin": {
-                    "name": "停止"
+                    "name": "停止",
+                    "examples":["{command_prefix}{command_name}"]
                 }
             },
             "disconnect": {
                 "korean": {
                     "name": "끝",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}"]
                 },
                 "mandarin": {
-                    "name": "切斷"
+                    "name": "切斷",
+                    "examples": ["{command_prefix}{command_name}"]
+
                 }
             },
-            "myPlaylist": {
+            "playlist": {
                 "korean": {
                     "name": "내목록",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}"]
                 },
                 "mandarin": {
-                    "name": "我的音樂表"
+                    "name": "我的音樂表",
+                    "examples": ["{command_prefix}{command_name}"]
                 }
             },
             "saveSong": {
                 "korean": {
                     "name": "저장",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}"]
                 },
                 "mandarin": {
-                    "name": "保存歌曲"
+                    "name": "保存歌曲",
+                    "examples": ["{command_prefix}{command_name}"]
                 }
             },
             "queue": {
                 "korean": {
                     "name": "대기열",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}"]
                 },
                 "mandarin": {
-                    "name": "隊列"
+                    "name": "隊列",
+                    "examples": ["{command_prefix}{command_name}"]
                 }
             },
             "serverSongs": {
                 "korean": {
                     "name": "목록",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}"]
                 },
                 "mandarin": {
-                    "name": "服務器歌曲"
+                    "name": "服務器歌曲",
+                    "examples": ["{command_prefix}{command_name}"]
                 }
             },
             "popPlaylist": {
                 "korean": {
                     "name": "노래제거",
                     "doc": "",
-                    "param": [
-                        ""
-                    ],
-                    "example": ""
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 2"]
                 },
                 "mandarin": {
-                    "name": "把播放音樂表移除"
+                    "name": "把播放音樂表移除",
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 2"]
                 }
             }
         }

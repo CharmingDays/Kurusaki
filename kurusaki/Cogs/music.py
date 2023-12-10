@@ -2,6 +2,7 @@ import asyncio
 import json
 import math
 import random
+import platform
 from typing import Optional
 import typing
 import discord
@@ -12,6 +13,8 @@ from discord.ext import commands
 from wavelink import Player,Node
 from discord.ext import tasks
 import spacy
+import copy
+import os
 
 
 class Music(commands.Cog):
@@ -20,20 +23,11 @@ class Music(commands.Cog):
     """
     def __init__(self,bot) -> None:
         self.bot:commands.Bot = bot
-        self.players = {}
         self.messages = {}
         self.no_cog_check = ['playlist',' poplaylist','serversongs','nowplaying','np','queue']
 
 
-    async def load_command_aliases(self):
-        command_list = json.loads(open('language.json',encoding='utf-8').read())
-        for commandName,languages in command_list['Music'].items():
-            command = self.bot.get_command(commandName)
-            for language in languages.values():
-                command.aliases.append(language['name'])
-    
-    
-    
+
     async def cog_load(self):
         await self.setup_database()
         server_uri = f"http://{os.getenv('lavalink_server')}:{os.getenv('lavalink_port')}"
@@ -56,9 +50,9 @@ class Music(commands.Cog):
         else:
             self.musicDoc = {}
 
-    # async def cog_command_error(self, ctx: Context, error: commands.CommandError):
-    #     if isinstance(error,commands.CommandInvokeError):
-    #         return await ctx.send(error.original)
+    async def cog_command_error(self, ctx: Context, error: commands.CommandError):
+        if isinstance(error,commands.CommandInvokeError):
+            return await ctx.send(error.original)
 
 
 
@@ -80,8 +74,6 @@ class Music(commands.Cog):
             await self.add_guild_volume(ctx)
 
         if ctx.command.name.lower() in self.no_cog_check:
-            player:Player = self.node.get_player(ctx.guild.id)
-            self.players[ctx.guild.id] = player #Cache the player 
             return
 
         should_join = ctx.command.name.lower() in ['play','loadplaylist','shuffleplaylist','listento']
@@ -91,29 +83,25 @@ class Music(commands.Cog):
         if not ctx.guild.voice_client:
             if should_join:
                 await ctx.author.voice.channel.connect(cls=Player)
-                player:Player = self.node.get_player(ctx.guild.id)
-                self.players[ctx.guild.id] = player
                 return 
 
-        player:Player = self.node.get_player(ctx.guild.id)
-        self.players[ctx.guild.id] = player #Cache the player 
-        if ctx.author.voice.channel.id != player.channel.id:
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
+        if player and ctx.author.voice.channel.id != player.channel.id:
             return await ctx.send(f"Please join the same chanel {player.channel.mention} as the bot first.")
 
 
-    async def should_disconnect(self,guild_id):
-        DISCONNECT_AFTER = 120
+    async def should_disconnect(self,guild:discord.Guild):
+        DISCONNECT_AFTER = 60*3
         await asyncio.sleep(DISCONNECT_AFTER)
-        try:
-            player:Player = self.players[guild_id]
-        except KeyError:
+        player:Player | None = typing.cast(wavelink.Player,guild.voice_client)
+        if not player:
+            # player already disconnected or error occurred
             return
         if not player.current and len(player.queue) == 0:
             # clean up the player and clear queue
             player.cleanup()
             await player.disconnect()
-            del self.players[guild_id]
-            self.messages.pop(guild_id)
+            self.messages.pop(guild.id)
 
 
 
@@ -165,15 +153,6 @@ class Music(commands.Cog):
             message:discord.Message = await channel.send(embed=emb)
             self.messages[message.guild.id]['last_message'] = message.id
 
-    @tasks.loop(minutes=5)
-    async def clear_player_cache(self):
-        """
-        Clear the "cache" from the `self.players` dict that has been idling > `WAIT_TIME`
-        """
-        WAIT_TIME = 8*60
-        for guildId in self.players.copy():
-            pass
-
     @commands.Cog.listener()
     async def on_wavelink_track_start(self,payload:wavelink.TrackStartEventPayload):
         """
@@ -198,7 +177,7 @@ class Music(commands.Cog):
                 # NOTE: song skipped via `skip` command
                 return
             
-            if player.queue.mode.loop == True:
+            if player.queue.mode == wavelink.QueueMode.loop:
                 return await player.play(payload.track)
             
             if len(player.queue) != 0:
@@ -206,7 +185,7 @@ class Music(commands.Cog):
                 next_song = await player.queue.get_wait()
                 return await player.play(next_song)
             if not player.current:
-                return await self.should_disconnect(player.guild.id)
+                return await self.should_disconnect(player.guild)
 
 
 
@@ -216,8 +195,8 @@ class Music(commands.Cog):
         Returns the currently playing song
         {command_prefix}{command_name}
         """
-        player:Player = self.players[ctx.guild.id]
-        if player and player.is_playing:    
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
+        if player and player.playing:    
             return await ctx.send(f"[{player.current.title}]({player.current.uri})")
         
         return await ctx.send("No track currently playing")
@@ -230,8 +209,8 @@ class Music(commands.Cog):
         """
         # TODO add error handler for when message limit > 2000
         # check songs in queue 
-        player:Player = self.players[ctx.guild.id]
-        if len(player.queue) == 0:
+        player:Player = typing.cast(wavelink.Player,ctx.guild.voice_client)
+        if not player or len(player.queue) == 0:
             return await ctx.send("Queue is empty.")
         songs = ""
         for index,song in enumerate(player.queue):
@@ -256,23 +235,6 @@ class Music(commands.Cog):
             self.messages[ctx.guild.id] = {'last_message':None,track.identifier:{'author':ctx.author.display_name,'icon':ctx.author.display_avatar.url,'channel':ctx.channel.id}}
 
 
-
-    async def match_title(self,title:str,all_tracks:typing.Union[wavelink.Playable,wavelink.Playlist]):
-        # iterate through the tracks list and find the closest matching title
-        nlp = spacy.load('en_core_web_lg')
-        query = nlp(title)
-        result = {'accuracy':0,'title':all_tracks[0].title,'index':0}
-        for index,track in enumerate(all_tracks):
-            target = track.title
-            target.replace("-",'')
-            vector = query.similarity(nlp(target))
-            if vector > result['accuracy']:
-                result['accuracy'] = vector
-                result['title'] = track.title
-                result['index'] = index
-
-        return all_tracks[result['index']]
-
     async def send_queue_message(self,ctx:Context,player:wavelink.Player,track:wavelink.Playable,embed_title=None):
         if embed_title == None:
             embed_title = track.title
@@ -286,14 +248,14 @@ class Music(commands.Cog):
         emb.set_footer(text=ctx.author.display_name,icon_url=ctx.author.display_avatar.url)
         return await ctx.send(embed=emb)
 
-    @commands.hybrid_command(aliases=['재생','開始'])
+    @commands.hybrid_command()
     async def play(self,ctx:commands.Context,*,query:str):
         """
         Search and play a song in a voice channel or add song to queue.
         track(required): The title of the song or url to paly from Youtube
         {command_prefix}{command_name} dududu! yaorenmao
         """
-        search_result = await wavelink.Playable.search(query)
+        search_result = await wavelink.Playable.search(query,source=wavelink.TrackSource.YouTube)
         player:Player = typing.cast(Player,ctx.voice_client)
         if isinstance(search_result,wavelink.Playlist):
             first_track=search_result.tracks.pop(0)
@@ -304,7 +266,7 @@ class Music(commands.Cog):
             
             await player.play(first_track)
             return await self.send_queue_message(ctx,player,first_track,search_result.name)
-        track = await self.match_title(query,search_result)
+        track = search_result[0]
         await self.add_message_info(ctx,track)
 
         if player.current:
@@ -318,7 +280,7 @@ class Music(commands.Cog):
             # Start first song
             if ctx.interaction != None:
                 return await ctx.interaction.response.send_message(f'Now playing {track.title}',ephemeral=True,delete_after=60)
-            await self.send_queue_message(ctx,player,track)
+            # await self.send_queue_message(ctx,player,track)
             return await player.play(track)
     
     # @play.error
@@ -329,10 +291,12 @@ class Music(commands.Cog):
     #         return await self.send_interaction(ctx,error.original.args[0])
 
     async def load_playlist_songs(self,ctx:Context,player:Player,songs:typing.List[str]):
+        tracks:[wavelink.Playable] = []
         for song in songs:
             track:wavelink.Playable = await wavelink.Playable.search(f"https://www.youtube.com/watch?v={song['id']}")
+            tracks.append(track[0])
             await self.add_message_info(ctx,track[0])
-            await player.queue.put_wait(track[0])
+        await player.queue.put_wait(tracks)
         return await ctx.message.add_reaction('🎶')
 
 
@@ -375,7 +339,7 @@ class Music(commands.Cog):
         if str(ctx.author.id) not in self.musicDoc['userPlaylist']:
             return await ctx.send("You don't have any songs saved.")
         
-        player:Player = self.players[ctx.guild.id]
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         if player.current:
             return await self.load_playlist_songs(ctx,player,songs)
         first_song  = songs.pop(0)
@@ -396,14 +360,13 @@ class Music(commands.Cog):
         """
         if trackPosition not in [0,1]:
             return await ctx.send("Please use `1` to play at same track position or `0` to start from beginning")
-        targetPlayer:Player = self.players[guildId]
+        targetGuild:discord.Guild = self.bot.get_guild(guildId)
+        targetPlayer:Player = typing.cast(wavelink.Player,targetGuild.voice_client)
         if trackPosition == 1:
-            trackPosition = targetPlayer.last_position
-        player:Player = self.players[ctx.guild.id]
-        songId = targetPlayer.current.identifier
-        track:wavelink.Playable = await wavelink.YouTubeTrack.search(f"https://www.youtube.com/watch?v={songId}")
-        await self.add_message_info(ctx,track[0])
-        await player.play(track[0],start=trackPosition)
+            trackPosition = targetPlayer.position
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
+        await self.add_message_info(ctx,targetPlayer.current)
+        await player.play(targetPlayer.current,start=trackPosition)
 
 
     @commands.command(name='serverSongs',aliases=['목록','服務器歌曲'])
@@ -429,7 +392,7 @@ class Music(commands.Cog):
         Stops the audio and clear all song in queue
         {command_prefix}{command_name}
         """
-        player:Player = self.players[ctx.guild.id]
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         if player.current:
             player.queue.clear()
             await player.stop()
@@ -442,8 +405,7 @@ class Music(commands.Cog):
         """
         Disconnects bot from voice channel and the user if the user the user is alone after bot leaves
         """
-        player:Player = self.players[ctx.guild.id]
-        del self.players[ctx.guild.id]
+        player:Player = typing.cast(Player,ctx.voice_client)
         if player.current:
             player.queue.clear()
             await player.stop()
@@ -461,8 +423,7 @@ class Music(commands.Cog):
         Disconnects the bot from the voice channel and clears queued songs.
         {command_prefix}{command_name}
         """
-        player:Player = self.players[ctx.guild.id]
-        del self.players[ctx.guild.id]
+        player:Player = typing.cast(Player,ctx.voice_client)
         if player.current:
             player.queue.clear()
             await player.stop()
@@ -480,7 +441,7 @@ class Music(commands.Cog):
         position(required): The position(index) of the song in list
         {command_prefix}{command_name} 3
         """
-        player:Player = self.players[ctx.guild.id]
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         previous_tracks = [track for track in player.queue]
         removed_track = previous_tracks.pop(position-1)
         player.queue.clear()
@@ -513,7 +474,7 @@ class Music(commands.Cog):
         """
 
 
-    @commands.command(aliases=['내목록','我的音樂表'])
+    @commands.command()
     async def playlist(self,ctx:Context):
         """
         View your saved songs.
@@ -535,7 +496,7 @@ class Music(commands.Cog):
         Save a song to your playlist that the bot is currently playing
         {command_prefix}{command_name}
         """
-        player:Player = self.players[ctx.guild.id]
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         filter = {"_id":"music"}
         if not player.current:
             return await ctx.send("No song currently playing to save.")
@@ -565,7 +526,7 @@ class Music(commands.Cog):
         {command_prefix}{command_name} 120
         """
         position*=1000
-        player:Player = self.players[ctx.guild.id]
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         if position >= player.current.length:
             return await ctx.send("Position exceeds or equals to song duration")
         
@@ -580,7 +541,7 @@ class Music(commands.Cog):
         {command_prefix}{command_name}
         {command_prefix}{command_name} 3
         """
-        player:Player = self.players[ctx.guild.id]
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         if len(player.queue) ==0:
             return await ctx.send("No songs in queue to skip to.")
         if position:
@@ -601,7 +562,7 @@ class Music(commands.Cog):
         Pause the music
         {command_prefix}{command_name}
         """
-        player:Player = self.players[ctx.guild.id]
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
 
         if not player.current:
             return await ctx.send("No audio currently playing")
@@ -619,7 +580,7 @@ class Music(commands.Cog):
         Resume the paused audio 
         {command_prefix}{command_name}
         """
-        player:Player = self.players[ctx.guild.id]
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         if not player.current:
             return await ctx.send('No audio in track')
         
@@ -636,13 +597,13 @@ class Music(commands.Cog):
         Set song loop on/off.
         {command_prefix}{command_name}
         """
-        player:Player = self.players[ctx.guild.id]
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         if not player:
             return await ctx.send("No audio playing.")
-        if player.queue.mode.loop == True:
-            player.queue.mode.loop = False
+        if player.queue.mode == wavelink.QueueMode.loop:
+            player.queue.mode = wavelink.QueueMode.normal
             return await ctx.send("Stopped loop")
-        player.queue.mode.loop = True
+        player.queue.mode = wavelink.QueueMode.loop
         return await ctx.send("Looping current song.")
 
 
@@ -656,7 +617,7 @@ class Music(commands.Cog):
         NOTE: max is 100, and makes it inaudible.
         """
         # NOTE: Rate limit volume updating later when more servers added
-        player:Player = self.players[ctx.guild.id]
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         if not _volume:
             return await ctx.send(f'Volume: **{player.volume}%**')
         if _volume >200:

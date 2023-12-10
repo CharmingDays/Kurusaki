@@ -18,7 +18,7 @@ class MyHelpCommand(commands.MinimalHelpCommand):
         if os_name.lower() == "linux":
             path = "bot_info.json"
         file = json.loads(open(path,encoding='utf-8').read())
-        setattr(self,'lang',file['language'])
+        setattr(self,'lang',file['languages'])
         setattr(self,'hidden_func',file['hidden'])
 
 
