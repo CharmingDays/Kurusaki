@@ -5,7 +5,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands.context import Context
 from motor.motor_asyncio import AsyncIOMotorClient
-
+from database_handler import MongoDatabase
 
 class ServerEvents(commands.Cog):
     """
@@ -14,8 +14,9 @@ class ServerEvents(commands.Cog):
     def __init__(self,bot):
         self.bot:commands.Bot = bot
         self.docId = {"_id":"serverEvents"}
-        self.command_usage:typing.Dict
         self.command_list:typing.List
+        self.command_usage:AsyncIOMotorClient
+        self.event_document:AsyncIOMotorClient
 
 
     async def setup_mongodb_connection(self):
@@ -23,13 +24,9 @@ class ServerEvents(commands.Cog):
         database = client['Discord-Bot-Database']
         collection = database['General']
         eventDoc = await collection.find_one({"_id":"serverEvents"})
-        cmdDoc = await collection.find_one({"_id":"command_usage"})
-        self.command_usage = cmdDoc
-        if not eventDoc:
-            eventDoc = {"_id":"serverEventsBackup"}
-        self.collection = collection
-        self.mongoClient = client
-        self.mongoDoc = eventDoc
+        command_usage=await collection.find_one({"_id":"command_usage"})
+        self.event_document = MongoDatabase(client,collection,eventDoc)
+        self.command_usage = MongoDatabase(client,collection,command_usage)
 
 
 
@@ -40,10 +37,11 @@ class ServerEvents(commands.Cog):
 
     async def cog_before_invoke(self, ctx: Context):
         guildId:str = str(ctx.guild.id)
-        if guildId not in self.mongoDoc:
+        if guildId not in self.event_document:
             newData = {"welcome_messages":{'messages':[],'channel':0},'auto_roles':[]}
-            self.mongoDoc[guildId] = newData
+            self.event_document[guildId] = newData
             await self.collection.update_one(self.docId,{"$set":{f"{guildId}":newData}})
+            await self.event_document
 
 
 
@@ -52,8 +50,8 @@ class ServerEvents(commands.Cog):
         Automatically add roles to members when they join server if roles provided
         """
         guildId:str = str(member.guild.id)
-        if guildId in self.mongoDoc:
-            guildRoles = self.mongoDoc[guildId]['auto_roles']
+        if guildId in self.event_document:
+            guildRoles = self.event_document[guildId]['auto_roles']
             incomingRoles = []
             if guildRoles:
                 for roleId in guildRoles:
@@ -81,10 +79,10 @@ class ServerEvents(commands.Cog):
         """
         guildId:str = str(member.guild.id)
         try:
-            welcomeChannelId = self.mongoDoc[guildId]['welcome_messages']['channel']
+            welcomeChannelId = self.event_document[guildId]['welcome_messages']['channel']
             if welcomeChannelId:
                 channel = member.guild.get_channel(welcomeChannelId)
-                message = random.choice(self.mongoDoc[guildId]['welcome_messages']['messages'])
+                message = random.choice(self.event_document[guildId]['welcome_messages']['messages'])
                 return await channel.send(message)
         except KeyError as error:
             pass
@@ -131,12 +129,12 @@ class ServerEvents(commands.Cog):
         {command_prefix}{command_name} @Novice Role
         """
         guildId:str = str(ctx.guild.id)
-        guildRoles:typing.List[int] = self.mongoDoc[guildId]['auto_roles']
+        guildRoles:typing.List[int] = self.event_document[guildId]['auto_roles']
         if role.id in guildRoles:
             return await ctx.send(f"Role **{role.name}** already in auto role list")
 
         newData = {f"{guildId}.auto_roles":role.id}
-        self.mongoDoc[guildId]['auto_roles'].append(role.id)
+        self.event_document[guildId]['auto_roles'].append(role.id)
         await self.collection.update_one(self.docId,{"$push":newData})
         return await ctx.send(f"Added role {role.name} to auto role list")
 
@@ -170,16 +168,16 @@ class ServerEvents(commands.Cog):
             # TODO  provide examples of allowed ones
             return await ctx.send(f"Your welcome message contains attributes that aren't allowed.\n{messageCheck}")
         guildId:str = str(ctx.guild.id)
-        savedChannel = self.mongoDoc[guildId]['welcome_messages']['channel']
+        savedChannel = self.event_document[guildId]['welcome_messages']['channel']
         if savedChannel:
             # contains content
             if channel and savedChannel != channel.id:
                 # update the channel id to a new one
-                self.mongoDoc[guildId]['welcome_messages']['channel'] = channel.id
+                self.event_document[guildId]['welcome_messages']['channel'] = channel.id
                 await self.collection.update_one(self.docId,{"$set":{f"{guildId}.welcome_messages.channel":channel.id}})
 
         
-            self.mongoDoc[guildId]['welcome_messages']['messages'].append(message)
+            self.event_document[guildId]['welcome_messages']['messages'].append(message)
             await self.collection.update_one({"_id":"serverEvents"},{"$push":{f"{guildId}.welcome_messages.messages":message}})
             return await ctx.send(f"Added new message to channel {channel.mention}\n**{message}**")
         
@@ -187,7 +185,7 @@ class ServerEvents(commands.Cog):
             channel = ctx.channel
         
         newData = {'channel':channel.id,'messages':[message]}
-        self.mongoDoc[guildId]['welcome_messages'] = newData
+        self.event_document[guildId]['welcome_messages'] = newData
         await self.collection.update_one(self.docId,{"$set":{f"{guildId}.welcome_messages":newData}})
         return await ctx.send(f"Set {channel.mention} as welcome message channel since no channel provided.\nPlease use the same command with provided channel name and welcome message to change channel.\n")
 
