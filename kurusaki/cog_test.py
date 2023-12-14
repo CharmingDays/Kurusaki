@@ -2,7 +2,6 @@ import discord,os
 from dotenv import load_dotenv
 from discord.ext import commands
 import typing
-import platform
 import json
 load_dotenv()
 

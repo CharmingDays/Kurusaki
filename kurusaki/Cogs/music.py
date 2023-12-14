@@ -12,8 +12,6 @@ from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 from discord.ext import commands
 from wavelink import Player,Node
 from discord.ext import tasks
-import spacy
-import copy
 import os
 
 
@@ -189,7 +187,7 @@ class Music(commands.Cog):
 
 
 
-    @commands.command(name='nowPlaying',aliases=['np','現在播放的音樂'])
+    @commands.command(name='nowPlaying',aliases=['np'])
     async def now_playing(self,ctx:Context):
         """
         Returns the currently playing song
@@ -201,7 +199,7 @@ class Music(commands.Cog):
         
         return await ctx.send("No track currently playing")
 
-    @commands.command(aliases=['대기열','隊列'])
+    @commands.command()
     async def queue(self,ctx:Context):
         """
         Check what songs are currently in queue
@@ -328,7 +326,7 @@ class Music(commands.Cog):
         return await ctx.send(error.original)
 
 
-    @commands.command(name='loadPlaylist',aliases=['加載播放音樂表'])
+    @commands.command(name='loadPlaylist')
     async def load_playlist(self,ctx:Context,songs=None):
         """
         Adds the songs in your personal playlist to queue and start it if no song currently playing
@@ -349,7 +347,7 @@ class Music(commands.Cog):
         return await self.load_playlist_songs(ctx,player,songs)
 
 
-    @commands.command(name='listenTo',aliases=['聼'])
+    @commands.command(name='listenTo')
     async def listen_to(self,ctx:Context,guildId:int,trackPosition:int=0):
         """
         Listen along to the songs another server is playing
@@ -369,7 +367,7 @@ class Music(commands.Cog):
         await player.play(targetPlayer.current,start=trackPosition)
 
 
-    @commands.command(name='serverSongs',aliases=['목록','服務器歌曲'])
+    @commands.command(name='serverSongs')
     async def guild_songs(self,ctx:Context):
         """
         View songs playing in other servers
@@ -386,7 +384,7 @@ class Music(commands.Cog):
         return await ctx.send(all_songs)
 
 
-    @commands.command(aliases=['停止'])
+    @commands.command()
     async def stop(self,ctx:Context):
         """
         Stops the audio and clear all song in queue
@@ -417,7 +415,7 @@ class Music(commands.Cog):
         return await ctx.message.add_reaction('✅')
 
 
-    @commands.command(aliases=['dc','leave','끝','切斷'])
+    @commands.command(aliases=['dc','leave'])
     async def disconnect(self,ctx:Context):
         """ 
         Disconnects the bot from the voice channel and clears queued songs.
@@ -433,7 +431,7 @@ class Music(commands.Cog):
         return await ctx.message.add_reaction('✅')
 
 
-    @commands.command(name='popQueue',aliases=['삭제','把歌從隊列移除'])
+    @commands.command(name='popQueue')
     async def pop_queue(self,ctx:Context,position:int):
         """
         Remove song from queue by position.
@@ -451,7 +449,7 @@ class Music(commands.Cog):
         return await ctx.send(f"Removed **{removed_track.title}** from queue")
 
 
-    @commands.command(name='popPlaylist',aliases=['把播放音樂表移除'])
+    @commands.command(name='popPlaylist')
     async def pop_playlist(self,ctx:Context,position:int):
         """
         Removed a song saved from your playlist with given index
@@ -490,7 +488,7 @@ class Music(commands.Cog):
 
 
 
-    @commands.command(name='saveSong',aliases=['저장','保存歌曲'])
+    @commands.command(name='saveSong')
     async def save_song(self,ctx:Context):
         """
         Save a song to your playlist that the bot is currently playing
@@ -517,7 +515,7 @@ class Music(commands.Cog):
         return await ctx.send(f"Saved **{player.current.title}** to your playlist")
 
 
-    @commands.command(aliases=['시간','尋找'])
+    @commands.command()
     async def seek(self,ctx:Context,position:int):
         """
         Jump to a specific in the current audio playing. Value must be in seconds.
@@ -532,7 +530,7 @@ class Music(commands.Cog):
         
         return await player.seek(position)
 
-    @commands.command(aliases=['스킵','跳過'])
+    @commands.command()
     async def skip(self,ctx:Context,position:Optional[int]):
         """
         Skip the current song the bot is playing or to a specific position in queue.
@@ -556,7 +554,7 @@ class Music(commands.Cog):
         return await ctx.message.add_reaction('⏭')
 
 
-    @commands.command(aliases=['일시정지','暫停'])
+    @commands.command()
     async def pause(self,ctx:Context):
         """
         Pause the music
@@ -574,7 +572,7 @@ class Music(commands.Cog):
         return await ctx.message.add_reaction('⏸')
 
 
-    @commands.command(aliases=['재개','繼續'])
+    @commands.command()
     async def resume(self,ctx:Context):
         """
         Resume the paused audio 
@@ -591,7 +589,7 @@ class Music(commands.Cog):
         return await ctx.message.add_reaction('▶️')
 
 
-    @commands.command(aliases=['반복','重複'])
+    @commands.command()
     async def repeat(self,ctx:Context):
         """
         Set song loop on/off.
@@ -607,7 +605,7 @@ class Music(commands.Cog):
         return await ctx.send("Looping current song.")
 
 
-    @commands.command(aliases=['vol','볼륨','音量'])
+    @commands.command(aliases=['vol'])
     async def volume(self,ctx:Context,_volume:typing.Optional[int]):
         """
         Set the volume of the bot.

@@ -7,11 +7,15 @@
         "playlist"," poplaylist","serversongs","nowplaying","np","queue"
     ],
     "languages": {
-        "CogNames": [
-            "Member",
-            "Music",
-            "Server"
-        ],
+        "language_keys":{
+            "ko":"korean"
+        },
+        "BotCogs": {
+            "Music":{
+                "mandarin":"",
+                "korean":""
+            }
+        },
         "DocFormat": [
             "doc",
             "command name",
@@ -63,13 +67,15 @@
             "loadPlaylist": {
                 "mandarin": {
                     "name": "加載播放音樂表",
-                    "example": "{command_prefix}{command_name}"
+                    "examples": ["{command_prefix}{command_name}"],
+                    "doc":"播放列表中的歌曲"
                 }
             },
             "listenTo": {
                 "mandarin": {
                     "name": "聼",
-                    "example":"{command_prefix}{command_name} 2342389472394"
+                    "examples":["{command_prefix}{command_name} 2342389472394"],
+                    "doc":"其他服务器正在听什么"
                 }
             },
             "play": {
@@ -79,7 +85,8 @@
                 },
                 "mandarin": {
                     "name": "開始",
-                    "examples":["{command_prefix}{command_name}","{command_prefix}{command_name} 芒种"]
+                    "examples":["{command_prefix}{command_name}","{command_prefix}{command_name} 芒种"],
+                    "doc":"播放 YouTube 上的歌曲或视频"
                 }
             },
             "skip": {
@@ -89,7 +96,8 @@
                 },
                 "mandarin": {
                     "name": "跳過",
-                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 4"]
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 4"],
+                    "doc":"跳过歌曲"
                 }
             },
             "seek": {
@@ -100,7 +108,8 @@
                 },
                 "mandarin": {
                     "name": "尋找",
-                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 102"]
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 102"],
+                    "doc":"跳至歌曲的特定部分"
                 }
             },
             "repeat": {
@@ -111,7 +120,8 @@
                 },
                 "mandarin": {
                     "name": "重複",
-                    "examples":["{command_prefix}{command_name}"]
+                    "examples":["{command_prefix}{command_name}"],
+                    "doc":"循环歌曲"
                 }
             },
             "resume": {
@@ -122,7 +132,8 @@
                 },
                 "mandarin": {
                     "name": "繼續",
-                    "examples": ["{command_prefix}{command_name}"]
+                    "examples": ["{command_prefix}{command_name}"],
+                    "doc":"恢复暂停的歌"
                 }
             },
             "pause": {
@@ -133,7 +144,8 @@
                 },
                 "mandarin": {
                     "name": "暫停",
-                    "examples": ["{command_prefix}{command_name}"]
+                    "examples": ["{command_prefix}{command_name}"],
+                    "doc":"暂停歌"
                 }
             },
             "volume": {
@@ -144,7 +156,8 @@
                 },
                 "mandarin": {
                     "name": "音量",
-                    "examples": ["{command_prefix}{command_name}"]
+                    "examples": ["{command_prefix}{command_name}"],
+                    "doc":"查看机器人的音量"
                 }
             },
             "popQueue": {
@@ -155,13 +168,15 @@
                 },
                 "mandarin": {
                     "name": "把歌從隊列移除",
-                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 3"]
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 3"],
+                    "doc":"按数字位置从队列中删除特定歌"
                 }
             },
             "stop": {
                 "mandarin": {
                     "name": "停止",
-                    "examples":["{command_prefix}{command_name}"]
+                    "examples":["{command_prefix}{command_name}"],
+                    "doc":"停止歌曲"
                 }
             },
             "disconnect": {
@@ -172,7 +187,8 @@
                 },
                 "mandarin": {
                     "name": "切斷",
-                    "examples": ["{command_prefix}{command_name}"]
+                    "examples": ["{command_prefix}{command_name}"],
+                    "doc":"断开机器人的连接"
 
                 }
             },
@@ -184,7 +200,8 @@
                 },
                 "mandarin": {
                     "name": "我的音樂表",
-                    "examples": ["{command_prefix}{command_name}"]
+                    "examples": ["{command_prefix}{command_name}"],
+                    "doc":"查看已保存歌曲的列表"
                 }
             },
             "saveSong": {
@@ -195,7 +212,8 @@
                 },
                 "mandarin": {
                     "name": "保存歌曲",
-                    "examples": ["{command_prefix}{command_name}"]
+                    "examples": ["{command_prefix}{command_name}"],
+                    "doc":"将当前播放的音乐保存到你的播放列表"
                 }
             },
             "queue": {
@@ -206,7 +224,8 @@
                 },
                 "mandarin": {
                     "name": "隊列",
-                    "examples": ["{command_prefix}{command_name}"]
+                    "examples": ["{command_prefix}{command_name}"],
+                    "doc":"看当前队列中的歌"
                 }
             },
             "serverSongs": {
@@ -217,7 +236,8 @@
                 },
                 "mandarin": {
                     "name": "服務器歌曲",
-                    "examples": ["{command_prefix}{command_name}"]
+                    "examples": ["{command_prefix}{command_name}"],
+                    "doc":"看其他discord服务器正在收听哪些歌曲"
                 }
             },
             "popPlaylist": {
@@ -228,9 +248,12 @@
                 },
                 "mandarin": {
                     "name": "把播放音樂表移除",
-                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 2"]
+                    "examples": ["{command_prefix}{command_name}","{command_prefix}{command_name} 2"],
+                    "doc":"按位置从播放列表中删除特定歌曲"
                 }
-            }
+            },
+            "shufflePlaylist":{},
+            "nowPlaying":{}
         }
     }
 }

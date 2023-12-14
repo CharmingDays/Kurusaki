@@ -33,21 +33,40 @@ class MyHelpCommand(commands.MinimalHelpCommand):
 
 
 
-    async def send_command_help(self, command):
-        #TODO  WAITING FOR TRANSLATIONS TO COMPLETE
-        # if self.context.current_argument in self.lang['korean']['commandNames']:
-        #     output= ""
-        #     for key,i in self.lang[command.cog_name][command.name]['korean'].items():
-        #         if key == 'name':
-        #             continue
-        #         output+=f"{i}\n"
-        #     emb = discord.Embed(color=discord.Color.random(),description=f"{output}")
-        #     return await self.context.send(embed=emb)
+
+    def translate_command(self,cog_name,command_name,original_name):
+        """
+        Find the translated version of the command replies with the definition
+        of the command in the invoked language
+        """
+        try:
+            translation = self.lang[cog_name][original_name]
+        except KeyError:
+            return None
+        lang = self.detector.detect(command_name)
+        if isinstance(lang.lang,list):
+            if lang.lang[1].lower() == "zh-cn":
+                return translation['mandarin']
+        elif lang.lang.lower() == 'zh-cn':
+            return translation['mandarin']
+        
+        return None
+
+    async def send_command_help(self, command:commands.Command):
+        #TODO  ADD LANGUAGE TRANSLATION VERSION FOR WHEN COMMANDS ARE USED
+        # Add language specific replies back into the document.
+        translated_command = self.translate_command(command.cog_name,self.context.current_argument,command.name)
+
         if command.name.lower() in self.hidden_func['commands'] and self.context.author.id not in self.context.bot.owner_ids:
             return await self.context.send("You don not have permission to view this command")
-        command_doc=command.help
+        
+        if translated_command:
+            newline = "\n"
+            command_doc = f"{translated_command['doc']}\n{f'{newline}'.join(translated_command['examples'])}"
+        else:
+            command_doc=command.help
         command_doc = command_doc.replace("{command_prefix}",self.context.prefix)
-        command_doc = command_doc.replace("{command_name}",command.name)
+        command_doc = command_doc.replace("{command_name}",self.context.current_argument)
         aliases=f" {self.context.prefix}".join(command.aliases)
         if command.aliases:
             emb=discord.Embed(title=f"{self.context.prefix}{command.name} **|** {self.context.prefix}{aliases}", description=f"{command_doc}",color=discord.Color.random())
@@ -61,13 +80,6 @@ class MyHelpCommand(commands.MinimalHelpCommand):
 
     async def send_cog_help(self,cog):
         cog_help= ""
-        lang = self.detector.detect(cog.qualified_name)
-        if lang.lang == 'ko' and lang.confidence >= .6:
-            original_cog = cog.qualified_name
-            # cog = 
-            #language is Korean
-            pass
-
         if cog.qualified_name == 'Guild':
             prefix_commands = ['add-prefix','remove-prefix','view-prefixes']
             for cmd in self.context.bot.commands:
