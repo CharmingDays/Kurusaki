@@ -1,7 +1,9 @@
 # Kurusaki
 A multipurpose discord bot.
 
-You will need [python version 3.11](https://www.python.org/downloads/) for wavelink to be properly installed.
+You will need [python version 3.11](https://www.python.org/downloads/) for wavelink v3+ to be properly installed. 
+
+You will also need lavalink version 4+
 
 
 ### Running the Discord bot
