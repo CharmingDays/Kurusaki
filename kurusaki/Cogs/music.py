@@ -2,7 +2,6 @@ import asyncio
 import json
 import math
 import random
-import platform
 from typing import Optional
 import typing
 import discord
@@ -13,6 +12,7 @@ from discord.ext import commands
 from wavelink import Player,Node
 from discord.ext import tasks
 import os
+from database_handler import MongoDatabase
 
 
 class Music(commands.Cog):

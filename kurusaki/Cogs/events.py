@@ -14,8 +14,8 @@ class ServerEvents(commands.Cog):
     def __init__(self,bot):
         self.bot:commands.Bot = bot
         self.docId = {"_id":"serverEvents"}
-        self.cmdDoc = {}
-        self.command_list= []
+        self.command_usage:typing.Dict
+        self.command_list:typing.List
 
 
     async def setup_mongodb_connection(self):
@@ -24,20 +24,14 @@ class ServerEvents(commands.Cog):
         collection = database['General']
         eventDoc = await collection.find_one({"_id":"serverEvents"})
         cmdDoc = await collection.find_one({"_id":"command_usage"})
-        self.cmdDoc = cmdDoc
+        self.command_usage = cmdDoc
         if not eventDoc:
             eventDoc = {"_id":"serverEventsBackup"}
         self.collection = collection
         self.mongoClient = client
         self.mongoDoc = eventDoc
 
-    async def load_guild_ids(self):
-        guilds = [str(guild.id) for guild in self.bot.guilds]
-        for guild in guilds:
-            self.cmdDoc[guild] = {}
 
-    async def update_guild_id(self,guildId):
-        self.cmdDoc[str(guildId)] = {}
 
     async def cog_load(self):
         await self.setup_mongodb_connection()
@@ -97,21 +91,20 @@ class ServerEvents(commands.Cog):
 
 
 
-    # @commands.Cog.listener('on_command')
-    # async def command_use_counter(self,ctx:Context):
-    #     # TODO add handler for if guildId not in database and update the guildId into mongodb
-    #     # TODO validate command names first before adding it into database
-    #     commandName = ctx.command.name.lower()
-    #     guildId = str(ctx.guild.id)
-    #     if commandName in self.cmdDoc['commands']:
-    #         self.cmdDoc['commands'][commandName]['guilds'][guildId]+=1
-    #         updateFilter  = {"$inc":{f"commands.{commandName}.guilds.{guildId}":+1}}
-    #         await self.collection.update_one({"_id":"command_usage"},updateFilter)
+    @commands.Cog.listener('on_command')
+    async def command_use_counter(self,ctx:Context):
+        # TODO add handler for if guildId not in database and update the guildId into mongodb
+        # TODO validate command names first before adding it into database
+        if not ctx.guild:
+            # Only for guild commands
+            return
+        commandName = ctx.command.name.lower()
+        guildId = str(ctx.guild.id)
+        if commandName not in self.command_usage:
+            self.command_usage[commandName] = {"guilds":{guildId:1},"usage":1}
 
-    #     if commandName not in self.cmdDoc['commands']:
-    #         self.cmdDoc['commands'][commandName] = {"guilds":{guildId:1}}
-    #         updateFilter = {"$set":{f"commands.{commandName}":self.cmdDoc['commands'][commandName]}}
-    #         await self.collection.update_one({"_id":"command_usage"},updateFilter)
+
+
   
   
     async def custom_server_events(self,member:discord.Member):
