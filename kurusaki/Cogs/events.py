@@ -15,8 +15,8 @@ class ServerEvents(commands.Cog):
         self.bot:commands.Bot = bot
         self.docId = {"_id":"serverEvents"}
         self.command_list:typing.List
-        self.command_usage:AsyncIOMotorClient
-        self.event_document:AsyncIOMotorClient
+        self.command_usage:MongoDatabase
+        self.event_document:MongoDatabase
 
 
     async def setup_mongodb_connection(self):
@@ -100,10 +100,58 @@ class ServerEvents(commands.Cog):
         guildId = str(ctx.guild.id)
         if commandName not in self.command_usage:
             self.command_usage[commandName] = {"guilds":{guildId:1},"usage":1}
+            await self.command_usage.set_item({f"{commandName}.guilds":{guildId:1},"usage":1})
 
 
+    def calculate_cosine_similarity(self,word1, word2):
+        # Tokenize words
+        tokens1 = set(word1.lower())
+        tokens2 = set(word2.lower())
 
-  
+        # Create a set of unique tokens
+        unique_tokens = tokens1.union(tokens2)
+
+        # Create vectors for each word
+        vector1 = [1 if token in tokens1 else 0 for token in unique_tokens]
+        vector2 = [1 if token in tokens2 else 0 for token in unique_tokens]
+
+        # Calculate the dot product
+        dot_product = sum(a * b for a, b in zip(vector1, vector2))
+
+        # Calculate the magnitude of each vector
+        magnitude1 = sum(a**2 for a in vector1) ** 0.5
+        magnitude2 = sum(a**2 for a in vector2) ** 0.5
+
+        # Calculate the cosine similarity
+        if magnitude1 == 0 or magnitude2 == 0:
+            return 0  # Avoid division by zero
+        else:
+            similarity = dot_product / (magnitude1 * magnitude2)
+            return similarity
+
+
+    def loop_all_commands(self,target):
+        word_vector = {'vector':0,'command_name':''}
+        for command_name in self.bot.all_commands:
+            vector = self.calculate_cosine_similarity(command_name,target)
+            if vector > word_vector['vector']:
+                word_vector['vector'] = vector
+                word_vector['command_name'] = command_name
+                print('new',word_vector)
+        return word_vector
+
+    @commands.Cog.listener('on_command_error')
+    async def auto_correct_suggestion(self,ctx:Context,error):
+        command_name = ctx.invoked_with
+        print(command_name)
+        if isinstance(error,commands.CommandNotFound):
+            print('isinstance')
+            suggestion_vector = self.loop_all_commands(command_name)
+            if suggestion_vector and ctx.author.id in self.bot.owner_ids:
+                print('is owner')
+                print(suggestion_vector)
+                return await ctx.send(f"Did you mean {suggestion_vector['command_name']}")
+
   
     async def custom_server_events(self,member:discord.Member):
         if member.guild.id == 298994260810924032:
