@@ -12,7 +12,7 @@ from discord.ext import commands
 from wavelink import Player,Node
 from discord.ext import tasks
 import os
-from database_handler import MongoDatabase
+from .database_handler import MongoDatabase
 
 
 class Music(commands.Cog):
@@ -23,8 +23,7 @@ class Music(commands.Cog):
         self.bot:commands.Bot = bot
         self.messages = {}
         self.no_cog_check = ['playlist',' poplaylist','serversongs','nowplaying','np','queue']
-
-
+        self.musicDoc:MongoDatabase
 
     async def cog_load(self):
         await self.setup_database()
@@ -39,15 +38,7 @@ class Music(commands.Cog):
         database = client['Discord-Bot-Database']
         collection = database['General']
         doc = await collection.find_one("music")
-        if doc:
-            self.mongoClient = client
-            self.mongoCollection = collection
-            self.musicDoc = doc
-
-
-        else:
-            self.musicDoc = {}
-
+        self.musicDoc = MongoDatabase(client,collection,doc)
     async def cog_command_error(self, ctx: Context, error: commands.CommandError):
         if isinstance(error,commands.CommandInvokeError):
             return await ctx.send(error.original)
@@ -56,18 +47,33 @@ class Music(commands.Cog):
 
     async def add_guild_volume(self,ctx:Context):
         # Adds the guild to database and set default volume to 50
-        self.musicDoc[str(ctx.guild.id)] = {'vol':50}
-        filter = {"_id":"music"}
-        await self.mongoCollection.update_one(filter,{"$set":{f"{ctx.guild.id}":{"vol":50}}})
+        await self.musicDoc.set_items([{f"{ctx.guild.id}":{"vol":50}}])
 
+
+
+    async def permission_checker(self,ctx:Context):
+        # NOTE: Original track player should not require permission for [skip,stop,seek]
+        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
+        command_name= ctx.command.name
+        author_commands = ['skip','stop','seek','popqueue']
+        audio_controllers = ['volume','listento','stop','disconnect','popqueue','stop','pause','resume','skip','seek']
+        if not player:
+            return False
+        if len(player.channel.members) == 2:
+            return True
+        
+        if command_name in audio_controllers:
+            pass
 
 
     async def cog_before_invoke(self, ctx: Context):
+
+
         if not ctx.guild:
             raise commands.CommandInvokeError("Command must be in server.")
         
 
-        if str(ctx.guild.id) not in self.musicDoc:
+        if str(ctx.guild.id) not in self.musicDoc.document:
             # add guild to database
             await self.add_guild_volume(ctx)
 
@@ -160,7 +166,7 @@ class Music(commands.Cog):
         if not player:
             # TODO handle error when player is not found
             return 
-        guildVolume = self.musicDoc[str(payload.player.guild.id)]['vol']
+        guildVolume = self.musicDoc.document[str(payload.player.guild.id)]['vol']
         if player.volume != guildVolume:
             await player.set_volume(guildVolume)
         await self.send_embed(payload,payload.track)
@@ -246,6 +252,35 @@ class Music(commands.Cog):
         emb.set_footer(text=ctx.author.display_name,icon_url=ctx.author.display_avatar.url)
         return await ctx.send(embed=emb)
 
+
+    
+
+    def title_vector(self,word1, word2):
+        tokens1 = set(word1.lower())
+        tokens2 = set(word2.lower())
+        unique_tokens = tokens1.union(tokens2)
+        vector1 = [1 if token in tokens1 else 0 for token in unique_tokens]
+        vector2 = [1 if token in tokens2 else 0 for token in unique_tokens]
+        dot_product = sum(a * b for a, b in zip(vector1, vector2))
+        magnitude1 = sum(a**2 for a in vector1) ** 0.5
+        magnitude2 = sum(a**2 for a in vector2) ** 0.5
+        if magnitude1 == 0 or magnitude2 == 0:
+            return 0 
+        else:
+            similarity = dot_product / (magnitude1 * magnitude2)
+            return similarity
+    
+    def match_titles(self,result,query):
+        title_vector = {"vector":0,'title':result[0]}
+        for title in result:
+            vector = self.title_vector(title.title,query)
+            if vector > title_vector['vector']:
+                title_vector = {"vector":vector,'title':title}
+
+
+        return title_vector['title']
+
+
     @commands.hybrid_command()
     async def play(self,ctx:commands.Context,*,query:str):
         """
@@ -255,6 +290,7 @@ class Music(commands.Cog):
         """
         search_result = await wavelink.Playable.search(query,source=wavelink.TrackSource.YouTube)
         player:Player = typing.cast(Player,ctx.voice_client)
+        raw_player = self.match_titles(search_result,query)
         if isinstance(search_result,wavelink.Playlist):
             first_track=search_result.tracks.pop(0)
             await self.add_message_info(ctx,first_track)
@@ -306,7 +342,7 @@ class Music(commands.Cog):
         Shuffles the songs in your playlist and start playing.
         {command_prefix}{command_name}
         """
-        songs = self.musicDoc['userPlaylist'][str(ctx.author.id)].copy()
+        songs = self.musicDoc.document['userPlaylist'][str(ctx.author.id)].copy()
         random.shuffle(songs)
         await ctx.invoke(self.bot.get_command('loadplaylist'),songs=songs)
 
@@ -317,7 +353,7 @@ class Music(commands.Cog):
         """
         Check for if user has playlist saved in database
         """
-        userPlaylist = self.musicDoc['userPlaylist']
+        userPlaylist = self.musicDoc.document['userPlaylist']
         if str(ctx.author.id) not in userPlaylist:
             raise commands.CommandError("Please add songs to your playlist first.")
 
@@ -333,8 +369,8 @@ class Music(commands.Cog):
         {command_prefix}{command_name}
         """
         if not songs:
-            songs = self.musicDoc['userPlaylist'][str(ctx.author.id)]
-        if str(ctx.author.id) not in self.musicDoc['userPlaylist']:
+            songs = self.musicDoc.document['userPlaylist'][str(ctx.author.id)]
+        if str(ctx.author.id) not in self.musicDoc.document['userPlaylist']:
             return await ctx.send("You don't have any songs saved.")
         
         player:Player = typing.cast(wavelink.Player,ctx.voice_client)
@@ -351,6 +387,7 @@ class Music(commands.Cog):
     async def listen_to(self,ctx:Context,guildId:int,trackPosition:int=0):
         """
         Listen along to the songs another server is playing
+        Using this command will replace the currently playing song if it's playing
         guildId(required): The serverId that you're trying to listen along with
         trackPosition(optional): Whether to start track from beginning (`0`) or play at the same track position (`1`) as the other server.
         {command_prefix}{command_name} serverId
@@ -457,19 +494,19 @@ class Music(commands.Cog):
         position(required): The position of the song on your playlist to remove
         {command_prefix}{command_name} 3 
         """
-        if str(ctx.author.id) not in self.musicDoc['userPlaylist']:
+        if str(ctx.author.id) not in self.musicDoc.document['userPlaylist']:
             return await ctx.send("You do not have songs in your playlist")
         
-        removed = self.musicDoc['userPlaylist'][str(ctx.author.id)].pop(position-1)
-        await self.mongoCollection.update_one({"_id":"music"},{"$pull":{f"userPlaylist.{ctx.author.id}":removed}})
-        return await ctx.send(f"Removed song **{removed['title']}** from your playlist.")
+        removed_song = self.musicDoc.document['userPlaylist'][str(ctx.author.id)].pop(position-1)
+        await self.musicDoc.pull_item({f"userPlaylist.{ctx.author.id}":removed_song})
+        return await ctx.send(f"Removed song **{removed_song['title']}** from your playlist.")
 
     
-    @commands.command()
-    async def command(self,ctx,*,playlist_url):
-        """
-        loads the songs from a youtube playlist into your discord bot playlist
-        """
+    # @commands.command()
+    # async def load_youtube_playlist(self,ctx,*,playlist_url):
+    #     """
+    #     loads the songs from a youtube playlist into your discord bot playlist
+    #     """
 
 
     @commands.command()
@@ -478,11 +515,11 @@ class Music(commands.Cog):
         View your saved songs.
         {command_prefix}{command_name}
         """
-        if str(ctx.author.id) not in self.musicDoc['userPlaylist']:
+        if str(ctx.author.id) not in self.musicDoc.document['userPlaylist']:
             return await ctx.send("You don't have any saved songs")
         
         songs =""
-        for index,song in enumerate(self.musicDoc['userPlaylist'][str(ctx.author.id)]):
+        for index,song in enumerate(self.musicDoc.document['userPlaylist'][str(ctx.author.id)]):
             songs+=f"**{index+1}**: {song['title']}\n"
         return await ctx.send(songs)
 
@@ -499,18 +536,17 @@ class Music(commands.Cog):
         if not player.current:
             return await ctx.send("No song currently playing to save.")
 
-        if str(ctx.author.id) in self.musicDoc['userPlaylist']:
-            song_ids = [song['id'] for song in self.musicDoc['userPlaylist'][str(ctx.author.id)]]
+        if str(ctx.author.id) in self.musicDoc.document['userPlaylist']:
+            song_ids = [song['id'] for song in self.musicDoc.document['userPlaylist'][str(ctx.author.id)]]
             if player.current.identifier in song_ids:
                 return await ctx.send(f"**{player.current.title}** already saved.")
         
         
             else:
-                self.musicDoc['userPlaylist'][str(ctx.author.id)].append({"title":player.current.title,"id":player.current.identifier})
-                await self.mongoCollection.update_one(filter,{"$push":{f"userPlaylist.{ctx.author.id}":{"title":player.current.title,"id":player.current.identifier}}})
+                await self.musicDoc.append_array({f"userPlaylist.{ctx.author.id}":{"title":player.current.title,"id":player.current.identifier}})
         else:
-            self.musicDoc['userPlaylist'][str(ctx.author.id)] = [{"title":player.current.title,"id":player.current.identifier}]
-            await self.mongoCollection.update_many(filter,{"$set":{f"userPlaylist.{ctx.author.id}":[{"title":player.current.title,"id":player.current.identifier}]}})
+            # new playlist user
+            await self.musicDoc.set_items({f"userPlaylist.{ctx.author.id}":[{"title":player.current.title,"id":player.current.identifier}]})
         
         return await ctx.send(f"Saved **{player.current.title}** to your playlist")
 
@@ -622,8 +658,7 @@ class Music(commands.Cog):
             _volume = 200
             await ctx.send("Set volume to 200 because it can't exceed 200.")
         await player.set_volume(_volume)
-        self.musicDoc[str(ctx.guild.id)]['vol'] = _volume
-        await self.mongoCollection.update_one({"_id":"music"},{"$set":{f"{ctx.guild.id}.vol":_volume}})
+        await self.musicDoc.set_items({f"{ctx.guild.id}.vol":_volume})
         return await ctx.send(f"Set volume to {_volume}")
 
 

@@ -4,7 +4,7 @@ import sqlite3
 from sqlite3 import Cursor
 import typing
 from motor import core as MotorCore
-
+from pymongo import ReturnDocument
 
 
 
@@ -14,7 +14,7 @@ class MongoDatabase(object):
         self.collection:MotorCore.AgnosticCollection = collection
         self.document:typing.Dict = document
         self.document_id = {"_id":document['_id']}
-        self.setup_attributes()
+        # self.setup_attributes()
 
     def setup_attributes(self):
         # if self.
@@ -29,23 +29,48 @@ class MongoDatabase(object):
         return sorted_operations
 
 
-    async def set_item(self,raw_operations):
-        operations = {"$set":self.gather_operations(raw_operations)}
-        return await self.collection.update_one(self.document_id,operations)
+    async def set_items(self,raw_operations:typing.Dict):
+        """Add a new key|value pair into the document
 
-    async def inc_operation(self,key_path:str,inc_by:int):
-        operation = {"$inc":{key_path:inc_by}}
-        return await self.collection.update_one(self.document_id,operation)
+        Args:
+            raw_operations (List[str]): the operations to preform into the document
+
+        Returns:
+            None: None
+        """
+        operations = {"$set":raw_operations}
+        self.document = await self.collection.find_one_and_update(self.document_id,operations,return_document=ReturnDocument.AFTER)
+
+
+    async def inc_operation(self,operations:typing.Dict):
+        """Increment value of specified key
+
+        Args:
+            key_path (str): The path of the key
+        """
+        self.document = await self.collection.find_one_and_update(self.document_id,operations,return_document=ReturnDocument.AFTER)
+
 
     async def rename_key(self,key_path:str,new_name:str):
+        """Rename a specified key
+
+        Args:
+            key_path (str): the path to the key to rename
+            new_name (str): the new name for the key
+        """
         operation = {"$rename":{key_path:new_name}}
-        return await self.collection.update_one(self.document_id,operation)
+        self.document =await self.collection.find_one_and_update(self.document_id,operation,return_document=ReturnDocument.AFTER)
     
     async def unset_item(self,key_path):
+        """Remove/unset a key from the dict/document
+
+        Args:
+            key_path (str): The dot notation path to the key
+        """
         operation = {"$unset":{key_path:""}}
-        return await self.collection.update_one(self.document_id,operation)
+        self.document =await self.collection.find_one_and_update(self.document_id,operation,return_document=ReturnDocument.AFTER)
     
-    async def append_array(self,array_path,values:typing.Union[int,str,typing.List]):
+    async def append_array(self,operations:typing.Dict):
         """Add an element or elements to an array
 
         Args:
@@ -55,8 +80,8 @@ class MongoDatabase(object):
         Returns:
             _type_: _description_
         """
-        operation = {"$addToSet":{array_path:values}}
-        return await self.collection.update_one(self.document_id,operation)
+        operation = {"$addToSet":operations}
+        self.document =await self.collection.find_one_and_update(self.document_id,operation,return_document=ReturnDocument.AFTER)
     
 
     async def pop_array(self,array_path,first_or_last:int):
@@ -71,26 +96,24 @@ class MongoDatabase(object):
             pymongo.results.UpdateResult: An instance of the pymongo.results.UpdateResult
         """
         operation = {"$pop":{array_path:first_or_last}}
-        return await self.collection.update_one(self.document_id,operation)
+        self.document = await self.collection.find_one_and_update(self.document_id,operation,return_document=ReturnDocument.AFTER)
 
-    async def pull_item(self,array_path:str,index:int):
+    async def pull_item(self,operations:typing.Dict):
         """Remove an element given specific index
 
         Args:
-            array_path (str): The dot notation path of the array 
-            index (int): the index of the element in the array
+            operations (dict): the pull operations to preform
 
         Returns:
-            _type_: The pymongo.results.UpdateResult
+            None
         """
-        operation = {"$pull":{array_path:{"$position":index}}}
-        return await self.collection.update_one(self.document_id,operation)
-    
+        operation = {"$pull":operations}
+        self.document = await self.collection.find_one_and_update(self.document_id,operation,return_document=ReturnDocument.AFTER)
+
 
     
-    async def custom_operation(self,*operations):        
-        return await self.collection.update_one(self.document_id,self.gather_operations(operations))
-
+    async def custom_operation(self,*operations):
+        self.document = await self.collection.find_one_and_update(self.document_id,self.gather_operations(operations),return_document=ReturnDocument.AFTER)
 
 class PySqliteDatabase(object):
     def __init__(self) -> None:
@@ -98,5 +121,3 @@ class PySqliteDatabase(object):
     
     def update_table(self,new_table):
         self.table = new_table
-
-

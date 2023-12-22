@@ -23,10 +23,10 @@ async def load_command_aliases(languages:typing.Dict):
 
 async def load_bot_info():
     bot_info = json.loads(open('D:/GithubRepo/Kurusaki/kurusaki/bot_info.json','r',encoding='utf-8').read())
-    await load_command_aliases(bot_info['languages'])
+    # await load_command_aliases(bot_info['languages'])
 
 async def load_cogs():
-    cogs = ['Cogs.music','Cogs.help']
+    cogs = ['Cogs.events','Cogs.help','Cogs.music']
     for i in cogs:
         await bot.load_extension(i) 
         print(i)

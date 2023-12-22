@@ -6,5 +6,7 @@ TODO Make option to remove multiple songs from playlist and queue
 TODO Make mongodb optional (If mongodb URL not present, use local sqlite or JSON determined by the user)
 TODO Fix command usage monitor
 TODO loo into whether it's worth to use default wavelink Queue system
-
+TODO make a script that checks for github repo updates and update itself from the latest version and fall back to previous version if failed.
 TODO Add music permissions handler for audio control commands
+TODO Add custom commandNotFound error for help command when help target is a cog
+TODO Add lyrics option for audio playing when available from lyrics API
