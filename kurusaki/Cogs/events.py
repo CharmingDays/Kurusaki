@@ -137,7 +137,6 @@ class ServerEvents(commands.Cog):
             if vector > word_vector['vector']:
                 word_vector['vector'] = vector
                 word_vector['command_name'] = command_name
-                print('new',word_vector)
         return word_vector
 
     def detect_language(self,command_name):
@@ -158,13 +157,9 @@ class ServerEvents(commands.Cog):
     async def auto_correct_suggestion(self,ctx:Context,error):
         # TODO add threshold for what is a good correction
         command_name = ctx.invoked_with
-        print(command_name)
         if isinstance(error,commands.CommandNotFound):
-            print('isinstance')
             suggestion_vector = self.loop_all_commands(command_name)
             if suggestion_vector and ctx.author.id in self.bot.owner_ids:
-                print('is owner')
-                print(suggestion_vector)
                 return await ctx.send(f"Did you mean {suggestion_vector['command_name']}")
 
   
