@@ -51,23 +51,23 @@ class MongoDatabase(object):
         self.document = await self.collection.find_one_and_update(self.document_id,operations,return_document=ReturnDocument.AFTER)
 
 
-    async def rename_key(self,key_path:str,new_name:str):
+    async def rename_key(self,raw_operations:typing.Dict):
         """Rename a specified key
 
         Args:
             key_path (str): the path to the key to rename
             new_name (str): the new name for the key
         """
-        operation = {"$rename":{key_path:new_name}}
-        self.document =await self.collection.find_one_and_update(self.document_id,operation,return_document=ReturnDocument.AFTER)
+        operations = {"$rename":raw_operations}
+        self.document =await self.collection.find_one_and_update(self.document_id,operations,return_document=ReturnDocument.AFTER)
     
-    async def unset_item(self,key_path):
+    async def unset_item(self,raw_operations):
         """Remove/unset a key from the dict/document
 
         Args:
             key_path (str): The dot notation path to the key
         """
-        operation = {"$unset":{key_path:""}}
+        operation = {"$unset":{raw_operations:""}}
         self.document =await self.collection.find_one_and_update(self.document_id,operation,return_document=ReturnDocument.AFTER)
     
     async def append_array(self,operations:typing.Dict):

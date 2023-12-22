@@ -663,8 +663,6 @@ class Music(commands.Cog):
 
 
 
-from dotenv import load_dotenv
-load_dotenv()
 
 async def setup(bot):
     await bot.add_cog(Music(bot))

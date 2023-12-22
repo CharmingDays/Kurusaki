@@ -1,3 +1,4 @@
+import platform
 import discord,os
 from dotenv import load_dotenv
 from discord.ext import commands
@@ -22,8 +23,12 @@ async def load_command_aliases(languages:typing.Dict):
 
 
 async def load_bot_info():
-    bot_info = json.loads(open('D:/GithubRepo/Kurusaki/kurusaki/bot_info.json','r',encoding='utf-8').read())
-    # await load_command_aliases(bot_info['languages'])
+    os_name = platform.system()
+    path ="D:\GithubRepo\Kurusaki\kurusaki\\bot_info.json"
+    if os_name.lower() == "linux":
+        path = "bot_info.json"
+    bot_info = json.loads(open(path,'r',encoding='utf-8').read())
+    await load_command_aliases(bot_info['languages'])
 
 async def load_cogs():
     cogs = ['Cogs.events','Cogs.help','Cogs.music']

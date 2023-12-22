@@ -1,4 +1,5 @@
 import json
+import platform
 import discord
 from discord.ext import commands, tasks
 import discord.utils
@@ -78,7 +79,11 @@ async def load_command_aliases(languages):
 
 
 async def load_bot_info():
-    bot_info = json.loads(open('D:/GithubRepo/Kurusaki/kurusaki/bot_info.json','r',encoding='utf-8').read())
+    os_name = platform.system()
+    path ="D:\GithubRepo\Kurusaki\kurusaki\\bot_info.json"
+    if os_name.lower() == "linux":
+        path = "bot_info.json"
+    bot_info = json.loads(open(path,'r',encoding='utf-8').read())
     await load_command_aliases(bot_info['languages'])
 
 
