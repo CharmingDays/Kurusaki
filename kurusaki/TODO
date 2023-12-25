@@ -1,13 +1,10 @@
-TODO Group async functions for `on_member_join` to run together
-TODO Add custom help command reply for when users use language specific help Ex: s.도움 Music --> should reply back in Korean
-TODO Save settings into `language.json` and change `language.json` name and structure to contain bot infos
 TODO make command to save youtube playlist into user's my_playlist
 TODO Make option to remove multiple songs from playlist and queue
 TODO Make mongodb optional (If mongodb URL not present, use local sqlite or JSON determined by the user)
-TODO Fix command usage monitor
-TODO loo into whether it's worth to use default wavelink Queue system
 TODO make a script that checks for github repo updates and update itself from the latest version and fall back to previous version if failed.
 TODO Add music permissions handler for audio control commands
 TODO Add custom commandNotFound error for help command when help target is a cog
 TODO Add lyrics option for audio playing when available from lyrics API
 TODO Send cog help command specific to the language used
+TODO command usage counter should only add new entries with original command name and not it's aliases.
+but should also include usages of aliases 
