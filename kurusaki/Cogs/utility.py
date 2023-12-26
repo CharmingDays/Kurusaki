@@ -104,7 +104,7 @@ class Utility(Cog):
             async with message.channel.typing():
                 await asyncio.sleep(1)
             chat = openai.ChatCompletion.create(
-                model = 'gpt-3.5-turbo',messages= [{
+                model = 'gpt-4-1106-preview',messages= [{
                     'role':'user','content': message.content
                 }]
             )
