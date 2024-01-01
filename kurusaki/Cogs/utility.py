@@ -1,6 +1,5 @@
 import asyncio
 import typing
-import random
 import discord
 from discord.ext.commands.context import Context
 import openai
@@ -8,17 +7,61 @@ import os
 from discord.ext import commands
 from discord.ext.commands import Cog, command,Context
 
+
+
+
+class Chatbot:
+    def __init__(self, memory_limit=5):
+        self.context = []
+        self.memory_limit = memory_limit
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+
+    def receive_message(self, user_message):
+        self.context.append(('user', user_message))
+        # Generate a response considering the context
+        response = self.generate_response()
+        self.context.append(('bot', response))
+        self.trim_context()
+        return response
+            
+    def generate_response(self):
+        # Join all parts of the conversation into a single string to prep for GPT-3
+        conversation_history = "\n".join([f"{speaker}: {message}" for speaker, message in self.context])
+        prompt = f"{conversation_history}\nbot:"
+        gpt_response = openai.ChatCompletion.create(
+            model = 'gpt-4-1106-preview',messages= [{
+                    'role':'user','content': prompt
+                }]
+        )
+        
+        # Extract and return the text portion of the response
+        response_text = gpt_response.choices[0].message.content.strip()
+        if len(response_text) > 2000:
+            response_list = [response_text[i:i+2000] for i in range(0, len(response_text), 2000)]
+            return response_list
+        
+        return response_text
+
+    def trim_context(self):
+        # This function ensures conversation history doesn't exceed token limits.
+        while self.get_context_length() > self.memory_limit:
+            self.context.pop(0)
+
+    def get_context_length(self):
+        # Counts the total tokens in the current context.
+        return sum(len(f"{speaker}: {message}") for speaker, message in self.context)
+        
+
+
+
+
 class Utility(Cog):
     def __init__(self,bot) -> None:
         self.bot:commands.Bot = bot
         self.feed_back_channel_id = 1105158289446142012
         self.utilityDb = {'users':[185181025104560128],'guild':[]}
+        self.chatbot = Chatbot(memory_limit=2048)
 
-    async def load_openai(self):
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-
-    async def cog_load(self):
-        await self.load_openai()
 
     @Cog.listener('on_command')
     async def command_correction(self,ctx:Context):
@@ -103,18 +146,13 @@ class Utility(Cog):
         if message.channel.id == 1130492632498442241:
             async with message.channel.typing():
                 await asyncio.sleep(1)
-            chat = openai.ChatCompletion.create(
-                model = 'gpt-4-1106-preview',messages= [{
-                    'role':'user','content': message.content
-                }]
-            )
-            content:str = chat['choices'][0]['message']['content']
-            if len(content) > 2000:
-                halfIndex =(len(content)/2)
-                halfContent = content[:halfIndex]
-                await message.reply(halfContent)
-                return await message.reply(content[halfContent:1])
-            return await message.reply(chat['choices'][0]['message']['content'])
+            chat = self.chatbot.receive_message(message.content)
+            if isinstance(chat,list):
+                for index,reply in enumerate(chat):
+                    if index == 0:
+                        await message.reply(reply)
+                    await message.channel.send(reply)
+            return await message.reply(chat)
 
 
 async def setup(bot):
