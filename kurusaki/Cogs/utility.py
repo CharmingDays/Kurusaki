@@ -14,22 +14,30 @@ class Chatbot:
     def __init__(self, memory_limit=5):
         self.context = []
         self.memory_limit = memory_limit
+        self.gpt_version = 'gpt-4-1106-preview'
         openai.api_key = os.getenv("OPENAI_API_KEY")
 
+
+    def set_version(self,version):
+        self.gpt_version = version
+
     def receive_message(self, user_message):
-        self.context.append(('user', user_message))
+        versi   on = "gpt-3.5-turbo"
+        if "v4:" in user_message:
+            self.context.append(('user', user_message[2:]))
+            version = self.gpt_version
         # Generate a response considering the context
-        response = self.generate_response()
+        response = self.generate_response(version)
         self.context.append(('bot', response))
         self.trim_context()
         return response
             
-    def generate_response(self):
+    def generate_response(self,version):
         # Join all parts of the conversation into a single string to prep for GPT-3
         conversation_history = "\n".join([f"{speaker}: {message}" for speaker, message in self.context])
         prompt = f"{conversation_history}\nbot:"
         gpt_response = openai.ChatCompletion.create(
-            model = 'gpt-4-1106-preview',messages= [{
+            model = version,messages= [{
                     'role':'user','content': prompt
                 }]
         )
@@ -82,7 +90,6 @@ class Utility(Cog):
             message = await ctx.channel.fetch_message(msgId)
             #TODO  Update the message attributes and contents into database
             messageData = {'content':message.content,'id':message.id,'author':message.author,'date':message.created_at,'savedBy':ctx.author.id}
-            updateFilter = {"$set":{f"{ctx.guild.id}.{message.id}":messageData}}
         except Exception as error:
             if isinstance(error,discord.NotFound):
                 return await ctx.send(f'Message ID {msgId} does not exist for channel {ctx.channel.mention}')
