@@ -22,7 +22,7 @@ class Chatbot:
         self.gpt_version = version
 
     def receive_message(self, user_message):
-        versi   on = "gpt-3.5-turbo"
+        version = "gpt-3.5-turbo"
         if "v4:" in user_message:
             self.context.append(('user', user_message[2:]))
             version = self.gpt_version
@@ -89,7 +89,6 @@ class Utility(Cog):
         try:
             message = await ctx.channel.fetch_message(msgId)
             #TODO  Update the message attributes and contents into database
-            messageData = {'content':message.content,'id':message.id,'author':message.author,'date':message.created_at,'savedBy':ctx.author.id}
         except Exception as error:
             if isinstance(error,discord.NotFound):
                 return await ctx.send(f'Message ID {msgId} does not exist for channel {ctx.channel.mention}')
