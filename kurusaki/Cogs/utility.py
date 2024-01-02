@@ -17,15 +17,13 @@ class Chatbot:
         self.gpt_version = 'gpt-4-1106-preview'
         openai.api_key = os.getenv("OPENAI_API_KEY")
 
-
-    def set_version(self,version):
-        self.gpt_version = version
-
     def receive_message(self, user_message):
         version = "gpt-3.5-turbo"
         if "v4:" in user_message:
-            self.context.append(('user', user_message[2:]))
             version = self.gpt_version
+            user_message = user_message[3:]
+        print(user_message)
+        self.context.append(('user', user_message[3:]))
         # Generate a response considering the context
         response = self.generate_response(version)
         self.context.append(('bot', response))
@@ -58,9 +56,14 @@ class Chatbot:
     def get_context_length(self):
         # Counts the total tokens in the current context.
         return sum(len(f"{speaker}: {message}") for speaker, message in self.context)
-        
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
+chat  = Chatbot()
+print(chat.receive_message("v4:What is the largest planet in our solar system"))
 
 
 class Utility(Cog):
