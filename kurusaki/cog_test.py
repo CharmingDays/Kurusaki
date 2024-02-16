@@ -1,3 +1,4 @@
+import asyncio
 import platform
 import discord,os
 from dotenv import load_dotenv
@@ -36,6 +37,10 @@ async def load_cogs():
         await bot.load_extension(i) 
         print(i)
     await load_bot_info()
+
+
+
+
 
 
 @bot.event

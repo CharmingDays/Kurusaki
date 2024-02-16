@@ -1,8 +1,5 @@
-FROM python:3.8-bullseye
+FROM python:3.10.12-slim
 COPY . .
 RUN python -m pip install -r requirements.txt
-ENV MONGO=ACCESS_LINK
-ENV KURUSAKI=TOKEN
-ENV lavalink_server=IP
-ENV lavalink_password=PASSWORD
-CMD ["python","kurusaki.py"]
+EXPOSE 2333
+CMD ["python3","kurusaki.py"]

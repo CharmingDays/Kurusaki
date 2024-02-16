@@ -1,4 +1,6 @@
+import asyncio
 import random
+import time
 import typing
 import discord,os
 from discord.ext import commands
@@ -17,6 +19,7 @@ class ServerEvents(commands.Cog):
         self.command_usage:MongoDatabase
         self.event_document:MongoDatabase
         self.translator = Translator()
+        self.reply_queue:typing.Dict = {}
 
 
     async def setup_mongodb_connection(self):
@@ -153,6 +156,50 @@ class ServerEvents(commands.Cog):
         suggest_command = self.loop_all_commands(command_name)
         return await ctx.send(f"{suggest_command}")
 
+
+
+    def prepare_help_doc(self,ctx:Context,command:commands.Command) ->discord.Embed:
+        doc = command.help
+        doc= doc.replace("{command_prefix}",ctx.prefix)
+        doc = doc.replace("{command_name}",command.name)
+        aliases = f"{ctx.prefix}".join(command.aliases)
+        if command.aliases:
+            emb = discord.Embed(title=f"{ctx.prefix}{command.name} **|** {ctx.prefix}{aliases}",description=doc,color=discord.Color.random())
+            return emb
+    
+        emb=discord.Embed(description=f"{ctx.prefix}{command.name}\n{doc}",color=discord.Color.random())
+        return emb
+
+
+    async def queue_msg_reply(self,ctx,timeout,messages:typing.List):
+        authorId = ctx.author.id
+        self.reply_queue[authorId] = {'replied':False,'messages':messages,'timeout':time.time()+timeout}
+        while timeout > 0:
+            if self.reply_queue[authorId]['replied']:
+                self.reply_queue.pop(authorId)
+                return True
+            await asyncio.sleep(1)
+            timeout-=1
+
+        raise asyncio.TimeoutError
+    
+
+    @commands.Cog.listener('on_message')
+    async def wait_for_message_reply(self,msg:discord.Message):
+        authorId = msg.author.id
+        if authorId in self.reply_queue:
+            if msg.content.lower() in self.reply_queue[authorId]['messages']:
+                self.reply_queue[authorId]['replied'] = True
+        
+
+    @commands.Cog.listener('on_reaction_add')
+    async def wait_for_reaction_reply(self,reaction:discord.Reaction,user:typing.Union[discord.Member,discord.User]):
+        authorId = user.id
+        if authorId in self.reply_queue:
+            if str(reaction.emoji) in self.reply_queue[authorId]['messages']:
+                self.reply_queue[authorId]['replied'] = True
+
+
     @commands.Cog.listener('on_command_error')
     async def auto_correct_suggestion(self,ctx:Context,error):
         # TODO add threshold for what is a good correction
@@ -160,8 +207,25 @@ class ServerEvents(commands.Cog):
         if isinstance(error,commands.CommandNotFound):
             suggestion_vector = self.loop_all_commands(command_name)
             if suggestion_vector and ctx.author.id in self.bot.owner_ids:
-                return await ctx.send(f"Did you mean {suggestion_vector['command_name']}")
-
+                msg = await ctx.send(f"Did you mean {suggestion_vector['command_name']}")
+                await msg.add_reaction('👍')
+                try:
+                    await self.queue_msg_reply(ctx,15,['yes','y','👍'])
+                except asyncio.TimeoutError:
+                    await msg.remove_reaction(emoji='👍',member=self.bot.user)
+                    await msg.delete()
+                else:
+                    separator:str = ctx.message.content.find(' ')
+                    command_name:commands.Command =self.bot.get_command(suggestion_vector['command_name'])
+                    if suggestion_vector['command_name'].lower() == 'help' and separator != -1:
+                        target_command:commands.Command = self.bot.get_command(ctx.message.content[separator+1:])
+                        command_embed = self.prepare_help_doc(ctx,target_command)
+                        return await ctx.send(embed=command_embed)
+                    if separator == -1:
+                        await ctx.invoke(command_name)
+                        
+                    # TODO add the provided args if any
+                    # TODO prepare param values and eval it into ctx.invoke(command_name,arg1,arg2)
   
     async def custom_server_events(self,member:discord.Member):
         if member.guild.id == 298994260810924032:

@@ -1,5 +1,5 @@
 python-dotenv
-git+https://github.com/Rapptz/discord.py
+discord.py
 pymongo==4.3.3
 dnspython==2.3.0
 Wavelink
@@ -9,5 +9,4 @@ pytz
 mcrcon==0.7.0
 motor==3.1.2
 openai
-tiktoken
 PyNaCl

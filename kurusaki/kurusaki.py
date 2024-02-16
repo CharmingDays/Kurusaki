@@ -12,17 +12,15 @@ import logging
 
 
 
-
+logger = logging.basicConfig(filename='discord.main',level=logging.INFO,)
 load_dotenv()
 discord.utils.setup_logging(level=logging.INFO,root=True)
-
 
 
 extensions = [
     'Cogs.help',
     'Cogs.music',
     'Cogs.member',
-    'Cogs.utility',
     'Cogs.events',
     'Cogs.league',
     # 'Cogs.ocean_bottle'
@@ -73,7 +71,7 @@ async def load_command_aliases(languages):
         for lang_alias in language_aliases.values():
             if lang_alias['name'] not in cmd.aliases:
                 cmd.aliases.append(lang_alias['name'])
-                print("Added alias:",lang_alias['name'])
+                logging.log(level=logging.INFO,msg= f"Added alias:{lang_alias['name']}")
                 kurusaki.remove_command(command_name)
                 kurusaki.add_command(cmd)
 
@@ -125,7 +123,7 @@ async def unload_all_cogs(ctx):
 
 @kurusaki.event
 async def on_ready():
-    print(f'{kurusaki.user.name} is running!',discord.__version__)
+    logging.log(level=logging.INFO,msg=f'{kurusaki.user.name} is running! {discord.__version__}')
     await kurusaki.wait_until_ready()
     auto_change_bot_status.start()
     await load_bot_extensions()
@@ -232,10 +230,15 @@ async def remove_prefix(ctx,*,prefix):
 async def load_bot_extensions():
     for ext in extensions:
         await kurusaki.load_extension(ext)
-        print(ext)
+        logging.log(logging.INFO,f"Loaded cog {ext}")
     await load_bot_info()
 
 
 
-# Run testing app Kurusaki Kurusaki
-kurusaki.run(os.getenv("KURUSAKI"))
+
+
+def run_bot(botToken:str ='KURUSAKI'):
+    kurusaki.run(os.getenv(botToken))
+
+
+run_bot('TEMPEST')
