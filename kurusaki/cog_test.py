@@ -32,12 +32,11 @@ async def load_bot_info():
     await load_command_aliases(bot_info['languages'])
 
 async def load_cogs():
-    cogs = ['Cogs.events','Cogs.help','Cogs.music']
+    cogs = ['Cogs.help','Cogs.music','Cogs.events']
     for i in cogs:
         await bot.load_extension(i) 
         print(i)
     await load_bot_info()
-
 
 
 

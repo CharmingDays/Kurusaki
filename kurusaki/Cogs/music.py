@@ -393,6 +393,11 @@ class Music(commands.Cog):
         {command_prefix}{command_name} serverId
         {command_prefix}{command_name} 823742837412 1
         """
+        if isinstance(guildId,str):
+            guildId = int(guildId)
+        if isinstance(trackPosition,str):
+            trackPosition = int(trackPosition)
+            
         if trackPosition not in [0,1]:
             return await ctx.send("Please use `1` to play at same track position or `0` to start from beginning")
         targetGuild:discord.Guild = self.bot.get_guild(guildId)
@@ -476,6 +481,8 @@ class Music(commands.Cog):
         position(required): The position(index) of the song in list
         {command_prefix}{command_name} 3
         """
+        if isinstance(position,str):
+            position = int(position)
         player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         previous_tracks = [track for track in player.queue]
         removed_track = previous_tracks.pop(position-1)
@@ -494,6 +501,8 @@ class Music(commands.Cog):
         position(required): The position of the song on your playlist to remove
         {command_prefix}{command_name} 3 
         """
+        if isinstance(position,str):
+            position = int(position)
         if str(ctx.author.id) not in self.musicDoc.document['userPlaylist']:
             return await ctx.send("You do not have songs in your playlist")
         
@@ -559,6 +568,8 @@ class Music(commands.Cog):
         track(required): The time to skip to in seconds
         {command_prefix}{command_name} 120
         """
+        if isinstance(position,str):
+            position = int(position)
         position*=1000
         player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         if position >= player.current.length:
@@ -576,6 +587,8 @@ class Music(commands.Cog):
         {command_prefix}{command_name} 3
         """
         player:Player = typing.cast(wavelink.Player,ctx.voice_client)
+        if isinstance(position,str):
+            position = int(position)
         if len(player.queue) ==0:
             return await ctx.send("No songs in queue to skip to.")
         if position:

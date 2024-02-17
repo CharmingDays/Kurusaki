@@ -199,6 +199,13 @@ class ServerEvents(commands.Cog):
             if str(reaction.emoji) in self.reply_queue[authorId]['messages']:
                 self.reply_queue[authorId]['replied'] = True
 
+    def prepare_params(self,ctx:commands.Context):
+        message:str = ctx.message.content.replace(f"{ctx.prefix}{ctx.invoked_with} ",'')
+        message = message.split(' ')
+        return message
+
+
+
 
     @commands.Cog.listener('on_command_error')
     async def auto_correct_suggestion(self,ctx:Context,error):
@@ -221,6 +228,8 @@ class ServerEvents(commands.Cog):
                         target_command:commands.Command = self.bot.get_command(ctx.message.content[separator+1:])
                         command_embed = self.prepare_help_doc(ctx,target_command)
                         return await ctx.send(embed=command_embed)
+                    command_args = self.prepare_params(ctx)
+                    await ctx.invoke(command_name,*command_args)
                     if separator == -1:
                         await ctx.invoke(command_name)
                         
