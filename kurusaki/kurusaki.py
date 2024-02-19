@@ -12,7 +12,7 @@ import logging
 
 
 
-logger = logging.basicConfig(filename='discord.main',level=logging.INFO,)
+logger = logging.basicConfig(filename='discord.main',level=logging.INFO)
 load_dotenv()
 discord.utils.setup_logging(level=logging.INFO,root=True)
 
@@ -241,4 +241,4 @@ def run_bot(botToken:str ='KURUSAKI'):
     kurusaki.run(os.getenv(botToken))
 
 
-run_bot('TEMPEST')
+run_bot('KURUSAKI')
