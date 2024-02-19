@@ -227,9 +227,9 @@ class ServerEvents(commands.Cog):
                     if suggestion_vector['command_name'].lower() == 'help' and separator != -1:
                         target_command:commands.Command = self.bot.get_command(ctx.message.content[separator+1:])
                         command_embed = self.prepare_help_doc(ctx,target_command)
+                        command_args = self.prepare_params(ctx)
+                        await ctx.invoke(command_name,*command_args)
                         return await ctx.send(embed=command_embed)
-                    command_args = self.prepare_params(ctx)
-                    await ctx.invoke(command_name,*command_args)
                     if separator == -1:
                         await ctx.invoke(command_name)
                         
