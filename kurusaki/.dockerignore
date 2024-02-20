@@ -1,0 +1,9 @@
+#igore test files and lavalink folder for image/container
+
+
+#igore cog_test
+cog_test.*
+#igore lavalink folder for server
+lavalink/
+
+test.*

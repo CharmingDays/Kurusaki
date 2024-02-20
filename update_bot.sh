@@ -5,4 +5,5 @@ mv clone/kurusaki kurusaki_copy #move the bot folder to a new folder
 mv kurusaki/.env kurusaki_copy #move the .env file to the new folder
 sudo rm -r clone kurusaki #remove the old bot folder
 mv kurusaki_copy kurusaki #rename the folder back to kurusaki   
-sudo systemctl restart kurusaki.service #restart the bot service
+cd kurusaki
+~/kurusaki/docker.sh
