@@ -1,3 +1,5 @@
+#This method is retired, please use Docker instead
+
 [Unit]
 Description=Lavalink server for music discord bots
 After=network.target

@@ -39,13 +39,31 @@ async def load_cogs():
     await load_bot_info()
 
 
+def prepare_args(command:commands.Command,ctx:commands.Context):
+    commandArgs:typing.Dict = command.params
+    userArgs:str = ctx.message.content.replace(f"{ctx.prefix}{ctx.invoked_with} ",'')
+    userArgs = userArgs.split(' ')
+    if len(userArgs) > len(commandArgs):
+        userArgs = " ".join(userArgs)
 
+    return userArgs
+
+
+@bot.command()
+async def some(ctx,*,first):
+    await ctx.send(f"This is the first arg {first}")
+
+
+@bot.command()
+async def view(ctx:commands.Context):
+    pass
 
 
 @bot.event
 async def on_ready():
-    await load_cogs()
-    await bot.tree.sync()
+    # await load_cogs()
+    # await bot.tree.sync()
     print(f'Loaded {bot.user.name}') 
-
-bot.run(os.getenv("TEMPEST"))
+    command = bot.get_command('some')
+    command
+# bot.run(os.getenv("TEMPEST"))

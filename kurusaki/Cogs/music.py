@@ -192,6 +192,12 @@ class Music(commands.Cog):
                 return await self.should_disconnect(player.guild)
 
 
+    @commands.Cog.listener('on_reaction_add')
+    async def music_control_reactions(self,reaction:discord.Reaction,user:typing.Union[discord.User,discord.Member]):
+        if user != self.bot.usera
+
+
+
 
     @commands.command(name='nowPlaying',aliases=['np'])
     async def now_playing(self,ctx:Context):
@@ -290,7 +296,7 @@ class Music(commands.Cog):
         """
         search_result = await wavelink.Playable.search(query,source=wavelink.TrackSource.YouTube)
         player:Player = typing.cast(Player,ctx.voice_client)
-        raw_player = self.match_titles(search_result,query)
+        # raw_player = self.match_titles(search_result,query)
         if isinstance(search_result,wavelink.Playlist):
             first_track=search_result.tracks.pop(0)
             await self.add_message_info(ctx,first_track)
