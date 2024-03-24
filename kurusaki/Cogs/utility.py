@@ -1,4 +1,5 @@
 import typing
+import aiohttp
 import discord
 from discord.ext.commands.context import Context
 from discord.ext import commands
@@ -59,6 +60,28 @@ class Utility(Cog):
         await channel.send(f"`{ctx.author}({ctx.author.id}):` **{message}**")
         return await ctx.send("Feature request sent!. Thank you.")
 
+
+
+    @command()
+    async def define(self,ctx,*,word):
+        """
+        Get the definition of a word
+        {command_prefix}{command_name}
+        word: The word to get the definition of
+        {command_prefix}{command_name} defecate
+        """
+        url = "https://api.dictionaryapi.dev/api/v2/entries/en/"+word
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    try:
+                        data = await response.json()
+                        definition = data[0]['meanings'][0]['definitions'][0]['definition']
+                        await ctx.send(f"Definition of {word}: {definition}\nExample: {data[0]['meanings'][0]['definitions'][0]['example']}")
+                    except Exception as e:
+                        await ctx.send(f"Definition of {word} not found")
+                else:
+                    await ctx.send(f"Definition of {word} not found")
 
 async def setup(bot):
     await bot.add_cog(Utility(bot))
