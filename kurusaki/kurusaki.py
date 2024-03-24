@@ -1,5 +1,4 @@
 import json
-import platform
 import discord
 from discord.ext import commands, tasks
 import discord.utils
@@ -12,7 +11,7 @@ import logging
 
 
 
-logger = logging.basicConfig(filename='discord.main',level=logging.INFO)
+logger = logging.basicConfig(filename='discord-main.log',level=logging.INFO)
 load_dotenv()
 discord.utils.setup_logging(level=logging.INFO,root=True)
 
@@ -22,7 +21,7 @@ extensions = [
     'Cogs.music',
     'Cogs.member',
     'Cogs.events',
-    'Cogs.league',
+    'Cogs.minecraft',
     # 'Cogs.ocean_bottle'
     # 'Cogs.text_channel',
 ]
@@ -77,10 +76,7 @@ async def load_command_aliases(languages):
 
 
 async def load_bot_info():
-    os_name = platform.system()
-    path ="D:\GithubRepo\Kurusaki\kurusaki\\bot_info.json"
-    if os_name.lower() == "linux":
-        path = "bot_info.json"
+    path =os.path.dirname(__file__) + '/bot_info.json'
     bot_info = json.loads(open(path,'r',encoding='utf-8').read())
     await load_command_aliases(bot_info['languages'])
 
@@ -128,13 +124,7 @@ async def on_ready():
     auto_change_bot_status.start()
     await load_bot_extensions()
     await kurusaki.tree.sync()
-    collections = mongodb['collections']
-    doc = await collections.find_one({"_id":"bot_status"})
-    bot_statuses = doc['kurusaki']
-    status_type = random.choice(list(bot_statuses.keys()))
-    message = random.choice(bot_statuses[status_type])
-    mongodb['bot-status'] = bot_statuses
-    await kurusaki.change_presence(activity=discord.Activity(name=message,type=bot_status_types[status_type]))
+    # await kurusaki.change_presence(activity=discord.Activity(name=message,type=bot_status_types[status_type]))
 
 
 

@@ -192,9 +192,9 @@ class Music(commands.Cog):
                 return await self.should_disconnect(player.guild)
 
 
-    @commands.Cog.listener('on_reaction_add')
-    async def music_control_reactions(self,reaction:discord.Reaction,user:typing.Union[discord.User,discord.Member]):
-        if user != self.bot.usera
+    # @commands.Cog.listener('on_reaction_add')
+    # async def music_control_reactions(self,reaction:discord.Reaction,user:typing.Union[discord.User,discord.Member]):
+    #     if user != self.bot.usera
 
 
 
@@ -383,7 +383,7 @@ class Music(commands.Cog):
         if player.current:
             return await self.load_playlist_songs(ctx,player,songs)
         first_song  = songs.pop(0)
-        first_track = await wavelink.Playable.search(f"https://www.youtube.com/watch?v={first_song['id']}")
+        first_track = await wavelink.Playable.search(f"https://www.youtube.com/watch?v={first_song['id']}",source=wavelink.TrackSource.YouTube)
         await self.add_message_info(ctx,first_track[0])
         await player.play(first_track[0])
         return await self.load_playlist_songs(ctx,player,songs)
