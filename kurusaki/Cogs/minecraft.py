@@ -76,25 +76,25 @@ class Minecraft(commands.Cog):
             pass
 
 
-    @commands.hybrid_group(name='mc')
-    async def minecraft_group(self,ctx:Context):
+    @commands.hybrid_group(with_app_command=True,description='Minecraft related commands')
+    async def mc(self,**kwargs):
         """
         Group for Minecraft commands
         """
 
 
-    @minecraft_group.command(name='view-role')
+    @mc.command(name='view-role')
     async def view_role(self,ctx:Context):
         """
         Role that is allowed to use the Minecraft commands
         """
         if ctx.guild.id not in self.mc_roles:
-            return self.send_interaction(ctx,f"No required role set yet for **{ctx.guild.name}**")\
+            return await self.send_interaction(ctx,f"No required role set yet for **{ctx.guild.name}**")\
         
         role = ctx.guild.get_role(self.mc_roles[ctx.guild.id]['role'])
-        return self.send_interaction(ctx,f"Required role for MC commands: **{role.name}**")
+        return await self.send_interaction(ctx,f"Required role for MC commands: **{role.name}**")
 
-    @minecraft_group.command(name='set-role')
+    @mc.command(name='set-role')
     async def set_role(self,ctx:Context,role:discord.Role):
         """
         Sets a Discord role that requires users to have to use minecraft commands
@@ -111,7 +111,7 @@ class Minecraft(commands.Cog):
             return await self.send_interaction(ctx,f"Changed role **{role.name}** as new required role for Minecraft commands.")
 
 
-    @minecraft_group.command(name='setup-rcon')
+    @mc.command(name='setup-rcon')
     async def setup_rcon(self,ctx:Context,host:str,port:typing.Optional[int]=25575,*,password:str):
         """
         Setup a RCON connection for  Minecraft related commands for your server members to use.
@@ -137,7 +137,7 @@ class Minecraft(commands.Cog):
 
 
 
-    @minecraft_group.command(name='connect-rcon')
+    @mc.command(name='connect-rcon')
     async def connectRcon(self,ctx:Context,host:str,port:typing.Optional[int]=25575,*,password:str):
         """
         Connect to a minecraft Rcon server
@@ -158,7 +158,7 @@ class Minecraft(commands.Cog):
 
 
 
-    @minecraft_group.command(name='link-account')
+    @mc.command(name='link-account')
     async def link_account(self,ctx:Context,*,username:str):
         """
         Link your Minecraft account to Discord account to make using commands easier
@@ -176,8 +176,8 @@ class Minecraft(commands.Cog):
         return await self.send_interaction(ctx,f'Minecraft user {username} could not be found, please make sure your spelling is correct.')
 
 
-    @minecraft_group.command(name='create-command')
-    async def create_command(self,ctx:Context,commandName:str,*,minecraftCommand:str):
+    @mc.command(name='add-command')
+    async def add_custom_command(self,ctx:Context,name:str,*,command:str):
         """
         Create a custom discord command for your minecraft server
         Command name must not include spaces (replace it with - or _)
@@ -190,14 +190,15 @@ class Minecraft(commands.Cog):
         if userId != ownerId:
             return await self.send_interaction(ctx,f'You are not the creator of the RCON connection setup. The person that setup the RCON connection must be the one to crate the custom commands.\nCurrent owner {ctx.guild.get_member(int(ownerId))}')
         
-        if commandName.lower() in self.mongoDoc[guildId]['commands']:
-            return await self.send_interaction(ctx,f'Command {commandName} already in command list')
+        if name.lower() in self.mongoDoc[guildId]['commands']:
+            return await self.send_interaction(ctx,f'Command {name} already in command list')
         
-        self.mongoDoc[guildId]['commands'][commandName.lower()]= minecraftCommand
+        self.mongoDoc[guildId]['commands'][name.lower()]= command
         #NOTE: Update the database
-        return await self.send_interaction(ctx,f"Command {commandName} created as a command for server.")
+        return await self.send_interaction(ctx,f"Command {name} created as a command for server.")
 
-    @minecraft_group.command(description='disconnect from the mcron server manually')
+
+    @mc.command(description='disconnect from the mcron server manually')
     async def disconnect(self,ctx:Context):
         """
         Manually disconnect from the rcon server if you don't want to wait until the auto disconnect to kick in.
@@ -211,7 +212,7 @@ class Minecraft(commands.Cog):
         del self.instances[ctx.author.id]
         return await self.send_interaction(ctx,'Disconnected from rcon server.')
 
-    @minecraft_group.command(name='rcon-cmd')
+    @mc.command(name='rcon-cmd')
     async def mc_cmd(self,ctx:Context,*,cmd):
         """
         Send a command to the minecraft server via rcon

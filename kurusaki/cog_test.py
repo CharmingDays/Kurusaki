@@ -28,11 +28,11 @@ async def load_bot_info():
     path ="D:\GithubRepo\Kurusaki\kurusaki\\bot_info.json"
     if os_name.lower() == "linux":
         path = "bot_info.json"
-    bot_info = json.loads(open(path,'r',encoding='utf-8').read())
-    await load_command_aliases(bot_info['languages'])
+    # bot_info = json.loads(open(path,'r',encoding='utf-8').read())
+    # await load_command_aliases(bot_info['languages'])
 
 async def load_cogs():
-    cogs = ['Cogs.help','Cogs.music','Cogs.events']
+    cogs = ['Cogs.minecraft']
     for i in cogs:
         await bot.load_extension(i) 
         print(i)
@@ -61,9 +61,7 @@ async def view(ctx:commands.Context):
 
 @bot.event
 async def on_ready():
-    # await load_cogs()
-    # await bot.tree.sync()
+    await load_cogs()
+    await bot.tree.sync()
     print(f'Loaded {bot.user.name}') 
-    command = bot.get_command('some')
-    command
-# bot.run(os.getenv("TEMPEST"))
+bot.run(os.getenv("TEMPEST"))
