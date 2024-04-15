@@ -2,7 +2,8 @@
 
 
 #igore cog_test
-cog_test.*
+*test.*
+test*.py
 #igore lavalink folder for server
 lavalink/
 

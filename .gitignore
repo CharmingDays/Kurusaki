@@ -38,6 +38,12 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
+
+
+#Ignore anything with test
+*test.*
+test*.*
+
 # Unit test / coverage reports
 htmlcov/
 .tox/

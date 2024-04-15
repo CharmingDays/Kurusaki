@@ -12,6 +12,7 @@ import aiohttp
 from aiohttp.client_reqrep import ClientResponse
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 
+
 class Minecraft(commands.Cog):
     """
     Minecraft related commands
