@@ -1,5 +1,4 @@
-import json
-import discord,os,time,datetime, asyncio
+import os
 from discord.ext import commands, tasks
 from discord.ext.commands import Cog, command
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient

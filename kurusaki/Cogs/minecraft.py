@@ -2,16 +2,13 @@ import os
 import typing
 import discord
 from discord.ext.commands.context import Context
-from mcrcon import MCRcon
-from mcrcon import MCRconException
-import time
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext import tasks
 import aiohttp
 from aiohttp.client_reqrep import ClientResponse
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
-
+from .minecraft_rcon import MinecraftClient, InvalidPassword, ClientError as RconClientError
 
 class Minecraft(commands.Cog):
     """
@@ -23,7 +20,6 @@ class Minecraft(commands.Cog):
         self.mc_roles = {}
         self.accounts= {}
         self.mongoDoc= {}
-        self.clear_rcon_instances.start()
 
     
     async def setup_database(self):
@@ -39,20 +35,6 @@ class Minecraft(commands.Cog):
 
 
 
-
-    @tasks.loop(minutes=2)
-    async def clear_rcon_instances(self):
-        """
-        Task handler for automatically deleting Minecraft Rcon sessions past 10 minutes
-        """
-        for userId,container in self.instances.copy().items():
-            if time.time() >= container['timer']:
-                try:
-                    container['client'].disconnect()
-                except:
-                    # already auto dc
-                    pass
-                del self.instances[userId]
 
     async def send_interaction(self,ctx:Context,message):
         """
@@ -84,7 +66,7 @@ class Minecraft(commands.Cog):
         """
 
 
-    @mc.command(name='view-role')
+    @mc.command(name='view-role',with_app_command=True)
     async def view_role(self,ctx:Context):
         """
         Role that is allowed to use the Minecraft commands
@@ -95,7 +77,7 @@ class Minecraft(commands.Cog):
         role = ctx.guild.get_role(self.mc_roles[ctx.guild.id]['role'])
         return await self.send_interaction(ctx,f"Required role for MC commands: **{role.name}**")
 
-    @mc.command(name='set-role')
+    @mc.command(name='set-role',with_app_command=True)
     async def set_role(self,ctx:Context,role:discord.Role):
         """
         Sets a Discord role that requires users to have to use minecraft commands
@@ -112,8 +94,8 @@ class Minecraft(commands.Cog):
             return await self.send_interaction(ctx,f"Changed role **{role.name}** as new required role for Minecraft commands.")
 
 
-    @mc.command(name='setup-rcon')
-    async def setup_rcon(self,ctx:Context,host:str,port:typing.Optional[int]=25575,*,password:str):
+    @mc.command(name='connect-rcon',with_app_command=True)
+    async def connect_rcon(self,ctx:Context,host:str,port:typing.Optional[int]=25575,*,password:str):
         """
         Setup a RCON connection for  Minecraft related commands for your server members to use.
         The bot will reconnect or connect to the RCON server using the same credentials provided with this command.
@@ -125,41 +107,21 @@ class Minecraft(commands.Cog):
             return await self.send_interaction(ctx,"Please include a password")
         
         try:
-            client = MCRcon(host=host,password=password,port=port)
-            client.connect()
-            if guildId in self.mongoDoc['guilds']:
-                await self.send_interaction(ctx,"Replaced previous login with current one.")
-            else:
-                await self.send_interaction(ctx,"Saved Minecraft Rcon login.")
-            self.mongoDoc['guilds'][guildId] = {'host':host,'password':password,'port':port,'owner':str(ctx.author.id)}
-        except MCRconException as error:
+            async with MinecraftClient(host=host,port=port,password=password) as client:
+                if guildId in self.mongoDoc['guilds']:
+                    await self.send_interaction(ctx,"Replaced previous login with current one.")
+                else:
+                    await self.send_interaction(ctx,"Saved Minecraft Rcon login.")
+                self.mongoDoc['guilds'][guildId] = {'host':host,'password':password,'port':port,'owner':str(ctx.author.id)}
+        except InvalidPassword as error:
             return await self.send_interaction(ctx,"Failed to connect to the server.\nPlease make sure that your password,IP,port are correct.")
 
-
-
-
-    @mc.command(name='connect-rcon')
-    async def connectRcon(self,ctx:Context,host:str,port:typing.Optional[int]=25575,*,password:str):
-        """
-        Connect to a minecraft Rcon server
-        """
-        if password.strip() == "":
-            return await self.send_interaction(ctx,'Password not included.')
-        try:
-            client= MCRcon(host=host,password=password,port=port)
-            client.connect()
-            self.instances[ctx.author.id]= {'client':client,'timer':time.time()+600}
-            return await self.send_interaction(ctx,f'Connected to server.\nBot will auto disconnect in 10 minutes and new connection will have to be established.')
-        except MCRconException as error:
-            if error.args[0].lower() == "login failed":
-                return await self.send_interaction(ctx,'Failed to login, please ensure that the password is correct')
-        except (ConnectionRefusedError,TimeoutError) as error:
+        except RconClientError as error:
             print(error)
-            return await self.send_interaction(ctx,'Failed to connect to rcon server.\nPlease ensure that the host(ip),port, and password are correct.')
+            return await self.send_interaction(ctx,"Could not connect to the client")
 
 
-
-    @mc.command(name='link-account')
+    @mc.command(name='link-account',with_app_command=True)
     async def link_account(self,ctx:Context,*,username:str):
         """
         Link your Minecraft account to Discord account to make using commands easier
@@ -177,7 +139,7 @@ class Minecraft(commands.Cog):
         return await self.send_interaction(ctx,f'Minecraft user {username} could not be found, please make sure your spelling is correct.')
 
 
-    @mc.command(name='add-command')
+    @mc.command(name='add-command',with_app_command=True)
     async def add_custom_command(self,ctx:Context,name:str,*,command:str):
         """
         Create a custom discord command for your minecraft server
@@ -198,32 +160,19 @@ class Minecraft(commands.Cog):
         #NOTE: Update the database
         return await self.send_interaction(ctx,f"Command {name} created as a command for server.")
 
-
-    @mc.command(description='disconnect from the mcron server manually')
-    async def disconnect(self,ctx:Context):
-        """
-        Manually disconnect from the rcon server if you don't want to wait until the auto disconnect to kick in.
-        """
-        if ctx.author.id not in self.instances:
-            # Existing connection not found.
-            return await self.send_interaction(ctx,'Connection already closed or not found')
-        
-        client = self.instances[ctx.author.id]['client']
-        client.disconnect()
-        del self.instances[ctx.author.id]
-        return await self.send_interaction(ctx,'Disconnected from rcon server.')
-
-    @mc.command(name='rcon-cmd')
+    @mc.command(name='rcon-cmd',with_app_command=True)
     async def mc_cmd(self,ctx:Context,*,cmd):
         """
         Send a command to the minecraft server via rcon
         """
         #Check to see if author.id in self.mc_roles to confirm connection
-        if ctx.author.id not in self.instances:
-            return await self.send_interaction(ctx,f'Please connect to server first with `connect-rcon` command')
-
-        client = self.instances[ctx.author.id]['client']
-        return await self.send_interaction(ctx,client.command(cmd))
+        if ctx.guild.id not in self.mongoDoc['guilds']:
+            return await self.send_interaction(ctx,"Please setup a RCON connection first using the command `{ctx.prefix}mc connect-rcon`")
+        if ctx.author.id != self.mongoDoc['guilds'][ctx.guild.id]['owner']:
+            return await self.send_interaction(ctx,"You are not the owner of the RCON connection setup for this server.")
+        rconInfo = self.mongoDoc['guilds'][ctx.guild.id]
+        async with MinecraftClient(host=rconInfo['host'],port=rconInfo['port'],password=rconInfo['password']) as client:
+            return await self.send_interaction(ctx,client.send(cmd))
 
 
 async def setup(bot):

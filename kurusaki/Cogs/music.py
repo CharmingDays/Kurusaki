@@ -331,7 +331,7 @@ class Music(commands.Cog):
     #         return await self.send_interaction(ctx,error.original.args[0])
 
     async def load_playlist_songs(self,ctx:Context,player:Player,songs:typing.List[str]):
-        tracks:[wavelink.Playable] = []
+        tracks:typing.List[wavelink.Playable] = []
         for song in songs:
             track:wavelink.Playable = await wavelink.Playable.search(f"https://www.youtube.com/watch?v={song['id']}")
             tracks.append(track[0])
