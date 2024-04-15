@@ -9,7 +9,7 @@ import aiohttp
 from aiohttp.client_reqrep import ClientResponse
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 from .minecraft_rcon import MinecraftClient, InvalidPassword, ClientError as RconClientError
-
+from .database_handler import MongoDatabase
 class Minecraft(commands.Cog):
     """
     Minecraft related commands
@@ -19,7 +19,7 @@ class Minecraft(commands.Cog):
         self.instances = {}
         self.mc_roles = {}
         self.accounts= {}
-        self.mongoDoc= {}
+        self.mongoDoc:MongoDatabase = None
 
     
     async def setup_database(self):
@@ -31,17 +31,19 @@ class Minecraft(commands.Cog):
         database = client['Discord-Bot-Database']
         collection = database['General']
         doc = await collection.find_one("minecraft")
-        self.mongoDoc = doc
+        self.mongoDoc = MongoDatabase(client,collection,doc)
 
 
+    async def cog_load(self) -> None:
+        await self.setup_database()
 
 
-    async def send_interaction(self,ctx:Context,message):
+    async def send_interaction(self,ctx:Context,message,ephemeral:bool=False):
         """
         Send a reply back as interaction only visible to invoker or as regular message if not an interaction
         """
         if ctx.interaction != None:
-            return await ctx.interaction.response.send_message(message)
+            return await ctx.interaction.response.send_message(message,ephemeral=ephemeral)
         return await ctx.send(message)
 
 
@@ -71,10 +73,11 @@ class Minecraft(commands.Cog):
         """
         Role that is allowed to use the Minecraft commands
         """
-        if ctx.guild.id not in self.mc_roles:
+        guildId = str(ctx.guild.id)
+        if guildId not in self.mc_roles:
             return await self.send_interaction(ctx,f"No required role set yet for **{ctx.guild.name}**")\
         
-        role = ctx.guild.get_role(self.mc_roles[ctx.guild.id]['role'])
+        role = ctx.guild.get_role(self.mc_roles[guildId]['role'])
         return await self.send_interaction(ctx,f"Required role for MC commands: **{role.name}**")
 
     @mc.command(name='set-role',with_app_command=True)
@@ -82,15 +85,16 @@ class Minecraft(commands.Cog):
         """
         Sets a Discord role that requires users to have to use minecraft commands
         """
-        if ctx.guild.id not in self.mc_roles:
-            self.mc_roles[ctx.guild.id] = {'role':role.id}
+        guildId = str(ctx.guild.id)
+        if guildId not in self.mc_roles:
+            self.mc_roles[guildId] = {'role':role.id}
             return await self.send_interaction(ctx,f"Set role **{role.name}** requirement for Minecraft commands")
 
-        elif role.id == self.mc_roles[ctx.guild.id]['role']:
+        elif role.id == self.mc_roles[guildId]['role']:
             return await self.send_interaction(ctx,f"**{role.name}** already set as the required role")
 
         else:
-            self.mc_roles[ctx.guild.id]['role']= role.id
+            self.mc_roles[guildId]['role']= role.id
             return await self.send_interaction(ctx,f"Changed role **{role.name}** as new required role for Minecraft commands.")
 
 
@@ -103,16 +107,19 @@ class Minecraft(commands.Cog):
         """
         #TODO  Update the database after new changes made
         guildId = str(ctx.guild.id)
+        authorId = str(ctx.author.id)
         if password.strip() == "":
             return await self.send_interaction(ctx,"Please include a password")
         
         try:
             async with MinecraftClient(host=host,port=port,password=password) as client:
-                if guildId in self.mongoDoc['guilds']:
+                if guildId in self.mongoDoc.document['guilds']:
                     await self.send_interaction(ctx,"Replaced previous login with current one.")
                 else:
                     await self.send_interaction(ctx,"Saved Minecraft Rcon login.")
-                self.mongoDoc['guilds'][guildId] = {'host':host,'password':password,'port':port,'owner':str(ctx.author.id)}
+                    login = {'host':host,'password':password,'port':port,'owner':authorId}
+                self.mongoDoc.document['guilds'][guildId] = login
+                await self.mongoDoc.set_items({f'guilds.{guildId}':login})
         except InvalidPassword as error:
             return await self.send_interaction(ctx,"Failed to connect to the server.\nPlease make sure that your password,IP,port are correct.")
 
@@ -127,11 +134,12 @@ class Minecraft(commands.Cog):
         Link your Minecraft account to Discord account to make using commands easier
         """
         account:ClientResponse = await self.lookup_user(username)
+        authorId = str(ctx.author.id)
         if account.ok:
             jsonData = await account.json()
-            if str(ctx.author.id) not in self.mongoDoc['accounts']:
+            if authorId not in self.mongoDoc.document['accounts']:
                 return await self.send_interaction(ctx,f'Minecraft account {account["name"]} linked to Discord Account {ctx.author.mention} now')
-            if jsonData['id'] == self.mongoDoc['accounts'][str(ctx.author.id)]['id']:
+            if jsonData['id'] == self.mongoDoc.document['accounts'][authorId]['id']:
                 return await self.send_interaction(ctx,f'Account {jsonData["name"]} already linked to your Discord account')
             else:
                 return await self.send_interaction(ctx,'Replaced previous account {previousAccount} with new account {currentAccount}')
@@ -139,7 +147,7 @@ class Minecraft(commands.Cog):
         return await self.send_interaction(ctx,f'Minecraft user {username} could not be found, please make sure your spelling is correct.')
 
 
-    @mc.command(name='add-command',with_app_command=True)
+    @mc.command(name='add-cmd',with_app_command=True)
     async def add_custom_command(self,ctx:Context,name:str,*,command:str):
         """
         Create a custom discord command for your minecraft server
@@ -147,32 +155,34 @@ class Minecraft(commands.Cog):
         """
         guildId = str(ctx.guild.id)
         userId = str(ctx.author.id)
-        if guildId not in self.mongoDoc['guilds']:
+        if guildId not in self.mongoDoc.document['guilds']:
             return await self.send_interaction(ctx,f"Please setup a Minecraft RCON connection first using the command `{ctx.prefix}mc setup-rcon`")
-        ownerId = self.mongoDoc['guilds'][guildId]['owner']
+        ownerId = self.mongoDoc.document['guilds'][guildId]['owner']
         if userId != ownerId:
             return await self.send_interaction(ctx,f'You are not the creator of the RCON connection setup. The person that setup the RCON connection must be the one to crate the custom commands.\nCurrent owner {ctx.guild.get_member(int(ownerId))}')
         
-        if name.lower() in self.mongoDoc[guildId]['commands']:
+        if name.lower() in self.mongoDoc.document[guildId]['commands']:
             return await self.send_interaction(ctx,f'Command {name} already in command list')
         
-        self.mongoDoc[guildId]['commands'][name.lower()]= command
+        self.mongoDoc.document[guildId]['commands'][name.lower()]= command
         #NOTE: Update the database
         return await self.send_interaction(ctx,f"Command {name} created as a command for server.")
 
-    @mc.command(name='rcon-cmd',with_app_command=True)
-    async def mc_cmd(self,ctx:Context,*,cmd):
+    @mc.command(with_app_command=True)
+    async def cmd(self,ctx:Context,*,cmd):
         """
         Send a command to the minecraft server via rcon
         """
         #Check to see if author.id in self.mc_roles to confirm connection
-        if ctx.guild.id not in self.mongoDoc['guilds']:
-            return await self.send_interaction(ctx,"Please setup a RCON connection first using the command `{ctx.prefix}mc connect-rcon`")
-        if ctx.author.id != self.mongoDoc['guilds'][ctx.guild.id]['owner']:
+        guildId = str(ctx.guild.id)
+        authorId = str(ctx.author.id)
+        if guildId not in self.mongoDoc.document['guilds']:
+            return await self.send_interaction(ctx,f"Please setup a RCON connection first using the command `{ctx.prefix}mc connect-rcon`")
+        if authorId != self.mongoDoc.document['guilds'][guildId]['owner']:
             return await self.send_interaction(ctx,"You are not the owner of the RCON connection setup for this server.")
-        rconInfo = self.mongoDoc['guilds'][ctx.guild.id]
+        rconInfo = self.mongoDoc.document['guilds'][guildId]
         async with MinecraftClient(host=rconInfo['host'],port=rconInfo['port'],password=rconInfo['password']) as client:
-            return await self.send_interaction(ctx,client.send(cmd))
+            return await self.send_interaction(ctx,await client.send(cmd))
 
 
 async def setup(bot):

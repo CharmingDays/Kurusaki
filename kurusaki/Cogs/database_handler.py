@@ -29,7 +29,7 @@ class MongoDatabase(object):
         return sorted_operations
 
 
-    async def set_items(self,raw_operations:typing.Dict):
+    async def set_items(self,raw_operations:typing.List[str]):
         """Add a new key|value pair into the document
 
         Args:
