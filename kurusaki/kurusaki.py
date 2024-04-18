@@ -22,7 +22,7 @@ extensions = [
     'Cogs.member',
     'Cogs.events',
     'Cogs.minecraft',
-    # 'Cogs.ocean_bottle'
+    'Cogs.anime'
     # 'Cogs.text_channel',
 ]
 

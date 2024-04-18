@@ -1,10 +1,8 @@
 import os
 import typing
-import discord
 from discord.ext.commands.context import Context
 from discord.ext import commands
 from discord.ext.commands import Context
-from discord.ext import tasks
 import aiohttp
 from aiohttp.client_reqrep import ClientResponse
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
@@ -124,7 +122,11 @@ class Minecraft(commands.Cog):
     async def add_custom_command(self,ctx:Context,name:str,*,command:str):
         """
         Create a custom discord command for your minecraft server
-        {command_prefix}{command_name} minecraft command
+        {command_prefix}{command_name} cmd-name command
+        name(required): The name of the command to create
+        command(required): The command to send to the minecraft server
+        {command_prefix}{command_name} rain weather rain
+        {command_prefix}{command_name} teleport tp @Player1 @Player2 @Player5
         """
         guildId = str(ctx.guild.id)
         userId = str(ctx.author.id)
@@ -158,8 +160,13 @@ class Minecraft(commands.Cog):
         return await self.send_interaction(ctx, f"Custom Commands:\n{commandList}")
 
 
+    def check_for_args(self,cmd,args):
+        #TODO Check if the command requires arguments and verify the arguments passed if any
+        pass
+
+
     @mc.command(with_app_command=True)
-    async def cmd(self,ctx:Context,name:str,*,args):
+    async def cmd(self,ctx:Context,name:str,*,args=None):
         """
         Send a pre-defined command to the minecraft server via rcon
         {command_prefix}{command_name} command-name arguments
