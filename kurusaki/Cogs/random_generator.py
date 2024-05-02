@@ -5,7 +5,7 @@ from aiohttp import ClientSession
 from discord.ext import commands
 from discord.ext.commands import Context
 
-class RandomGenerator(commands.Cog):
+class RandomGenerator(commands.Cog,name='Random'):
     def __init__(self,bot) -> None:
         self.bot:commands.bot = bot
 

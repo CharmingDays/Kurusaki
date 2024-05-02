@@ -8,6 +8,9 @@ from aiohttp.client_reqrep import ClientResponse
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 from .minecraft_rcon import MinecraftClient, InvalidPassword, ClientError as RconClientError
 from .database_handler import MongoDatabase
+
+
+
 class Minecraft(commands.Cog):
     """
     Minecraft related commands
