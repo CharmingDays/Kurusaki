@@ -9,6 +9,12 @@ from pymongo import ReturnDocument
 
 
 class MongoDatabase(object):
+    """
+    A clas to handle all the database operations for mongodb
+    raw_operations/operation: -> {"path.to.key":"value"}
+    
+    """
+
     def __init__(self,client:typing.Optional[MotorClient],collection:typing.Optional[MotorCore.AgnosticCollection],document:typing.Optional[typing.Dict]={}):
         self.client:MotorClient = client
         self.collection:MotorCore.AgnosticCollection = collection
@@ -37,6 +43,8 @@ class MongoDatabase(object):
 
         Returns:
             None: None
+
+        
         """
         operations = {"$set":raw_operations}
         self.document = await self.collection.find_one_and_update(self.document_id,operations,return_document=ReturnDocument.AFTER)

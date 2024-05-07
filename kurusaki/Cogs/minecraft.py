@@ -61,6 +61,27 @@ class Minecraft(commands.Cog):
             pass
 
 
+    async def update_player_list(self,guild_id:int,list_output:str):
+        """
+        Update the list of players in the server
+        """
+        
+        # Find the index of the colon
+        index = list_output.find(':')
+        # Extract the part of the string after the colon, remove leading and trailing whitespace, and split it into a list
+        player_names = list_output[index+1:].strip().split(', ')
+        current_players = self.mongoDoc.document.get('players',[])
+        if not current_players:
+            await self.mongoDoc.set_items({f'guilds.{guild_id}.players':player_names})
+        
+        else:
+            for player in player_names:
+                if player in current_players.copy():
+                    current_players.remove(player)
+            await self.mongoDoc.append_array({f'guilds.{guild_id}.players':current_players})
+        
+
+
     @commands.hybrid_group(with_app_command=True,description='Minecraft related commands')
     async def mc(self,**kwargs):
         """
@@ -68,8 +89,11 @@ class Minecraft(commands.Cog):
         """
 
 
+
+
+
     @mc.command(name='connect-rcon',with_app_command=True)
-    async def connect_rcon(self,ctx:Context,host:str,port:typing.Optional[int]=25575,*,password:str):
+    async def connect_rcon(self,ctx:Context,host:str,password:str,port:typing.Optional[int]=25575):
         """
         Setup a RCON connection for  Minecraft related commands for your server members to use.
         {command_prefix}{command_name} host port password
@@ -77,7 +101,7 @@ class Minecraft(commands.Cog):
         port(optional): The port of the minecraft server. Default is 25575
         password(required): The RCON password for the minecraft server
         {command_prefix}{command_name} 183.125.214.33 RconPassWord
-        {command_prefix}{command_name} 183.125.214.33 25580 RconPassWord
+        {command_prefix}{command_name} 183.125.214.33 RconPassWord 25579
         """
         #TODO  Update the database after new changes made
         guildId = str(ctx.guild.id)
@@ -94,12 +118,15 @@ class Minecraft(commands.Cog):
                 #UPDATE DATABASE
                 login = {'host':host,'password':password,'port':port,'owner':authorId,"commands":{}}
                 await self.mongoDoc.set_items({f'guilds.{guildId}':login})
+                await self.update_player_list(guildId,await client.send("list"))
         except InvalidPassword as error:
             return await self.send_interaction(ctx,"Failed to connect to the server.\nPlease make sure that your password,IP,port are correct.")
 
         except RconClientError as error:
             print(error)
             return await self.send_interaction(ctx,"Could not connect to the client")
+
+
 
 
     @mc.command(name='link-account',with_app_command=True)
@@ -112,10 +139,12 @@ class Minecraft(commands.Cog):
         if account.ok:
             jsonData = await account.json()
             if authorId not in self.mongoDoc.document['accounts']:
-                return await self.send_interaction(ctx,f'Minecraft account {account["name"]} linked to Discord Account {ctx.author.mention} now')
-            if jsonData['id'] == self.mongoDoc.document['accounts'][authorId]['id']:
+                await self.mongoDoc.set_items({f'accounts.{authorId}':jsonData})
+                return await self.send_interaction(ctx,f'Minecraft account {jsonData["name"]} linked to Discord Account {ctx.author.mention} now')
+            elif jsonData['id'] == self.mongoDoc.document['accounts'][authorId]['id']:
                 return await self.send_interaction(ctx,f'Account {jsonData["name"]} already linked to your Discord account')
             else:
+                await self.mongoDoc.set_items({f'accounts.{authorId}':jsonData})
                 return await self.send_interaction(ctx,'Replaced previous account {previousAccount} with new account {currentAccount}')
         
         return await self.send_interaction(ctx,f'Minecraft user {username} could not be found, please make sure your spelling is correct.')
@@ -131,6 +160,7 @@ class Minecraft(commands.Cog):
         {command_prefix}{command_name} rain weather rain
         {command_prefix}{command_name} teleport tp @Player1 @Player2 @Player5
         """
+        #@user - Targets the command user (Requires a linked minecraft account)
         guildId = str(ctx.guild.id)
         userId = str(ctx.author.id)
         if guildId not in self.mongoDoc.document['guilds']:
@@ -163,20 +193,41 @@ class Minecraft(commands.Cog):
         return await self.send_interaction(ctx, f"Custom Commands:\n{commandList}")
 
 
-    def check_for_args(self,cmd,args):
+    def check_for_args(self,ctx:Context,args:str):
         #TODO Check if the command requires arguments and verify the arguments passed if any
-        pass
+        user_id:str = str(ctx.author.id)
+        guildId = str(ctx.guild.id)
+        linked_accounts = self.mongoDoc.document['accounts']
+        guild_players = self.mongoDoc.document['guilds'][guildId]['players']
+        resp = {}
+        conditions = {'success':True}
+        if "@user" in args:
+            if user_id not in linked_accounts:
+                conditions['user'] = False
+                conditions['success'] =  False
+            else:
+                mc_name = linked_accounts[user_id]['name']
+                if mc_name in guild_players:
+                    resp["@user"] = mc_name
+
+        if conditions['success']:
+            for key,value in resp.items():
+                args = args.replace(key,value)
+
+        resp['args'] = args
+        return resp
+
 
 
     @mc.command(with_app_command=True)
-    async def cmd(self,ctx:Context,name:str,*,args=None):
+    async def cmd(self,ctx:Context,name:str):
         """
         Send a pre-defined command to the minecraft server via rcon
         {command_prefix}{command_name} command-name arguments
         arguments(optional): Optional arguments for when the command requires it
-        {command_prefix}{command_name} rain
-        {command_prefix}{command_name} tp Player1 Player2 Player5
+        {command_prefix}{command_name} time set day
         """
+
         guildId = str(ctx.guild.id)
         if guildId not in self.mongoDoc.document['guilds']:
             return await self.send_interaction('Minecraft RCON or commands are not setup for this server.')
@@ -185,8 +236,14 @@ class Minecraft(commands.Cog):
         
         command = self.mongoDoc.document['guilds'][guildId]['commands'][name.lower()]
         serverInfo = self.mongoDoc.document['guilds'][guildId]
+        prep_args = self.check_for_args(ctx,command)
         async with MinecraftClient(host=serverInfo['host'],port=serverInfo['port'],password=serverInfo['password']) as client:
-            return await self.send_interaction(ctx,await client.send(command))
+            client_resp = await client.send(prep_args['args'])
+            return await self.send_interaction(ctx,client_resp)
+
+
+
+
 
     @mc.command(name='admin-cmd',with_app_command=True)
     async def admin_cmd(self,ctx:Context,*,cmd):

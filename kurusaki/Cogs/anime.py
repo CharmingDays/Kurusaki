@@ -8,12 +8,6 @@ class Anime(commands.Cog):
     def __init__(self,bot):
         self.bot:commands.Bot = bot
 
-    async def fetch(self,method,url:str,**kwargs):
-        async with aiohttp.ClientSession() as session:
-            async with session.request(method,url,**kwargs) as response:
-                response.read()
-                return response
-
 
     @commands.command(name="imgSearch")
     async def img_search(self,ctx:Context,*,imageUrl:str=None):
