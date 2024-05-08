@@ -69,18 +69,25 @@ class Minecraft(commands.Cog):
         # Find the index of the colon
         index = list_output.find(':')
         # Extract the part of the string after the colon, remove leading and trailing whitespace, and split it into a list
-        player_names = list_output[index+1:].strip().split(', ')
-        current_players = self.mongoDoc.document.get('players',[])
-        if not current_players:
-            await self.mongoDoc.set_items({f'guilds.{guild_id}.players':player_names})
+        live_players = list_output[index+1:].strip().split(', ')
+        player_list = self.mongoDoc.document.get('players',[])
+        if not player_list:
+            await self.mongoDoc.set_items({f'guilds.{guild_id}.players':live_players})
         
         else:
-            for player in player_names:
-                if player in current_players.copy():
-                    current_players.remove(player)
-            await self.mongoDoc.append_array({f'guilds.{guild_id}.players':current_players})
-        
+            for player in live_players.copy():
+                if player in player_list:
+                    live_players.remove(player)
+            await self.mongoDoc.append_array({f'guilds.{guild_id}.players':live_players})
 
+
+    async def cog_before_invoke(self,ctx:Context):
+        if ctx.command.name == 'cmd':
+            guildId = str(ctx.guild.id)
+            
+
+    
+    #TODO Add a check for the command to see if it's on cooldown from custom commands
 
     @commands.hybrid_group(with_app_command=True,description='Minecraft related commands')
     async def mc(self,**kwargs):
@@ -89,7 +96,12 @@ class Minecraft(commands.Cog):
         """
 
 
-
+    async def create_guild_data(self,ctx:Context,host:str,password:str,port:int):
+        guildId = str(ctx.guild.id)
+        authorId = str(ctx.author.id)
+        guild_data = {'connection':{'host':host,'password':password,'port':port,'owner':authorId},"commands":{},'players':[]}
+        await self.mongoDoc.set_items({f'guilds.{guildId}':guild_data})
+        
 
 
     @mc.command(name='connect-rcon',with_app_command=True)
@@ -105,7 +117,6 @@ class Minecraft(commands.Cog):
         """
         #TODO  Update the database after new changes made
         guildId = str(ctx.guild.id)
-        authorId = str(ctx.author.id)
         if password.strip() == "":
             return await self.send_interaction(ctx,"Please include a password")
         
@@ -116,8 +127,7 @@ class Minecraft(commands.Cog):
                 else:
                     await self.send_interaction(ctx,"Saved Minecraft Rcon login.")
                 #UPDATE DATABASE
-                login = {'host':host,'password':password,'port':port,'owner':authorId,"commands":{}}
-                await self.mongoDoc.set_items({f'guilds.{guildId}':login})
+                await self.create_guild_data(ctx,host,password,port)
                 await self.update_player_list(guildId,await client.send("list"))
         except InvalidPassword as error:
             return await self.send_interaction(ctx,"Failed to connect to the server.\nPlease make sure that your password,IP,port are correct.")
@@ -151,7 +161,7 @@ class Minecraft(commands.Cog):
 
 
     @mc.command(name='add-cmd',with_app_command=True)
-    async def add_custom_command(self,ctx:Context,name:str,*,command:str):
+    async def add_command(self,ctx:Context,name:str,command:str,description:typing.Optional[str]=""):
         """
         Create a custom discord command for your minecraft server
         {command_prefix}{command_name} cmd-name command
@@ -165,7 +175,7 @@ class Minecraft(commands.Cog):
         userId = str(ctx.author.id)
         if guildId not in self.mongoDoc.document['guilds']:
             return await self.send_interaction(ctx,f"Please setup a Minecraft RCON connection first using the command `{ctx.prefix}mc setup-rcon`")
-        ownerId = self.mongoDoc.document['guilds'][guildId]['owner']
+        ownerId = self.mongoDoc.document['guilds'][guildId]['connection']['owner']
         if userId != ownerId:
             return await self.send_interaction(ctx,f'You are not the creator of the RCON connection setup. The person that setup the RCON connection must be the one to crate the custom commands.\nCurrent owner {ctx.guild.get_member(int(ownerId))}')
         
@@ -173,7 +183,7 @@ class Minecraft(commands.Cog):
             return await self.send_interaction(ctx,f'Command {name} already in command list')
         
         #NOTE: Update the database
-        await self.mongoDoc.set_items({f'guilds.{guildId}.commands.{name.lower()}':command})
+        await self.mongoDoc.set_items({f'guilds.{guildId}.commands.{name.lower()}':{"command":command,"description":description,"cooldown":0}})
         return await self.send_interaction(ctx,f"Command {name} created as a command for server.")
 
 
@@ -189,11 +199,20 @@ class Minecraft(commands.Cog):
         commands = self.mongoDoc.document['guilds'][guildId]['commands']
         if not commands:
             return await self.send_interaction(ctx, "No custom commands have been created yet.")
-        commandList = "\n".join([f"`{name}` - **{command}**" for name, command in commands.items()])
+        commandList = "\n".join([f"`{name}` - **{commandInfo['description']}**" for name, commandInfo in commands.items()])
         return await self.send_interaction(ctx, f"Custom Commands:\n{commandList}")
 
 
     def check_for_args(self,ctx:Context,args:str):
+        """Check if the command requires arguments and verify the arguments passed if any
+
+        Args:
+            ctx (Context): The discord context object
+            args (str): The minecraft command to check for arguments
+
+        Returns:
+            typing.Dict: The dict response of how the command should be formatted
+        """
         #TODO Check if the command requires arguments and verify the arguments passed if any
         user_id:str = str(ctx.author.id)
         guildId = str(ctx.guild.id)
@@ -235,7 +254,7 @@ class Minecraft(commands.Cog):
             return await self.send_interaction(ctx,f"Command {name} not found in command list.\nPlease use the command `{ctx.prefix}mc cmd-list` to view commands. or `{ctx.prefix}mc add-cmd` to add a new command.")
         
         command = self.mongoDoc.document['guilds'][guildId]['commands'][name.lower()]
-        serverInfo = self.mongoDoc.document['guilds'][guildId]
+        serverInfo = self.mongoDoc.document['guilds'][guildId]['connection']
         prep_args = self.check_for_args(ctx,command)
         async with MinecraftClient(host=serverInfo['host'],port=serverInfo['port'],password=serverInfo['password']) as client:
             client_resp = await client.send(prep_args['args'])
@@ -243,10 +262,12 @@ class Minecraft(commands.Cog):
 
 
 
+    #TODO Add cooldown to custom commands
+
 
 
     @mc.command(name='admin-cmd',with_app_command=True)
-    async def admin_cmd(self,ctx:Context,*,cmd):
+    async def admin_cmd(self,ctx:Context,*,cmd:str):
         """
         Send a command to the minecraft server via rcon
         {command_prefix}{command_name} minecraft-command
@@ -259,9 +280,9 @@ class Minecraft(commands.Cog):
         authorId = str(ctx.author.id)
         if guildId not in self.mongoDoc.document['guilds']:
             return await self.send_interaction(ctx,f"Please setup a RCON connection first using the command `{ctx.prefix}mc connect-rcon`")
-        if authorId != self.mongoDoc.document['guilds'][guildId]['owner']:
+        if authorId != self.mongoDoc.document['guilds'][guildId]['connection']['owner']:
             return await self.send_interaction(ctx,"You are not the owner of the RCON connection setup for this server.")
-        rconInfo = self.mongoDoc.document['guilds'][guildId]
+        rconInfo = self.mongoDoc.document['guilds'][guildId]['connection']
         async with MinecraftClient(host=rconInfo['host'],port=rconInfo['port'],password=rconInfo['password']) as client:
             return await self.send_interaction(ctx,await client.send(cmd))
 

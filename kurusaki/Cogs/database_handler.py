@@ -35,11 +35,11 @@ class MongoDatabase(object):
         return sorted_operations
 
 
-    async def set_items(self,raw_operations:typing.List[str]):
+    async def set_items(self,raw_operations:typing.Dict):
         """Add a new key|value pair into the document
 
         Args:
-            raw_operations (List[str]): the operations to preform into the document
+            raw_operations (Dict): the operations to preform into the document
 
         Returns:
             None: None
