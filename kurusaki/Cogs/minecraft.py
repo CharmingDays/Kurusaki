@@ -1,5 +1,7 @@
 import os
+import time
 import typing
+import discord
 from discord.ext.commands.context import Context
 from discord.ext import commands
 from discord.ext.commands import Context
@@ -17,8 +19,7 @@ class Minecraft(commands.Cog):
     """
     def __init__(self,bot):
         self.bot = bot
-        self.instances = {}
-        self.accounts= {}
+        self.cooldowns = {}
         self.mongoDoc:MongoDatabase = None
 
     
@@ -85,7 +86,12 @@ class Minecraft(commands.Cog):
         if ctx.command.name == 'cmd':
             guildId = str(ctx.guild.id)
             
-
+    async def send_rcon_command(self,guild_id:str,command:str):
+        if not isinstance(guild_id,str):
+            guild_id = str(guild_id)
+        server_info = self.mongoDoc.document['guilds'][guild_id]['connection']
+        async with MinecraftClient(host=server_info['host'],port=server_info['port'],password=server_info['password']) as client:
+            return await client.send(command)
     
     #TODO Add a check for the command to see if it's on cooldown from custom commands
 
@@ -161,7 +167,7 @@ class Minecraft(commands.Cog):
 
 
     @mc.command(name='add-cmd',with_app_command=True)
-    async def add_command(self,ctx:Context,name:str,command:str,description:typing.Optional[str]=""):
+    async def add_command(self,ctx:Context,name:str,command:str,description:typing.Optional[str],roles:typing.Optional[discord.Role],cooldown:typing.Optional[int]=0):
         """
         Create a custom discord command for your minecraft server
         {command_prefix}{command_name} cmd-name command
@@ -183,8 +189,25 @@ class Minecraft(commands.Cog):
             return await self.send_interaction(ctx,f'Command {name} already in command list')
         
         #NOTE: Update the database
-        await self.mongoDoc.set_items({f'guilds.{guildId}.commands.{name.lower()}':{"command":command,"description":description,"cooldown":0}})
+        #cooldown: time.time() in seconds
+        await self.mongoDoc.set_items({f'guilds.{guildId}.commands.{name.lower()}':{"command":command,"description":description,"cooldown":cooldown,'roles':[str(role.id) for role in roles]}})
         return await self.send_interaction(ctx,f"Command {name} created as a command for server.")
+
+
+
+    async def role_check(self,author_roles:typing.List[str],roles:typing.List[str]):
+        if isinstance(author_roles[0],int):
+            author_roles = [str(role) for role in author_roles]
+        user_roles = [str(role.id) for role in author_roles]
+        if not roles:
+            #role not required
+            return True
+        for role in roles:
+            if role in user_roles:
+                return True
+            
+        return False
+
 
 
     @mc.command(name='cmd-list',with_app_command=True)
@@ -203,7 +226,7 @@ class Minecraft(commands.Cog):
         return await self.send_interaction(ctx, f"Custom Commands:\n{commandList}")
 
 
-    def check_for_args(self,ctx:Context,args:str):
+    async def check_for_args(self,ctx:Context,args:str):
         """Check if the command requires arguments and verify the arguments passed if any
 
         Args:
@@ -217,25 +240,23 @@ class Minecraft(commands.Cog):
         user_id:str = str(ctx.author.id)
         guildId = str(ctx.guild.id)
         linked_accounts = self.mongoDoc.document['accounts']
-        guild_players = self.mongoDoc.document['guilds'][guildId]['players']
-        resp = {}
-        conditions = {'success':True}
+        live_players = await self.send_rcon_command(guildId,"list")
+        conditions = {'args':{}}
         if "@user" in args:
             if user_id not in linked_accounts:
                 conditions['user'] = False
-                conditions['success'] =  False
+                conditions['failed'] =  False
             else:
                 mc_name = linked_accounts[user_id]['name']
-                if mc_name in guild_players:
-                    resp["@user"] = mc_name
+                if mc_name in live_players:
+                    conditions['args']['@user'] = mc_name
 
-        if conditions['success']:
-            for key,value in resp.items():
+        if 'failed' not in conditions:
+            for key,value in conditions['args'].items():
                 args = args.replace(key,value)
 
-        resp['args'] = args
-        return resp
-
+            conditions['command'] = args
+        return conditions
 
 
     @mc.command(with_app_command=True)
@@ -248,17 +269,37 @@ class Minecraft(commands.Cog):
         """
 
         guildId = str(ctx.guild.id)
+        authorId = str(ctx.author.id)
         if guildId not in self.mongoDoc.document['guilds']:
             return await self.send_interaction('Minecraft RCON or commands are not setup for this server.')
         if name.lower() not in self.mongoDoc.document['guilds'][guildId]['commands']:
             return await self.send_interaction(ctx,f"Command {name} not found in command list.\nPlease use the command `{ctx.prefix}mc cmd-list` to view commands. or `{ctx.prefix}mc add-cmd` to add a new command.")
         
-        command = self.mongoDoc.document['guilds'][guildId]['commands'][name.lower()]
+        command_info = self.mongoDoc.document['guilds'][guildId]['commands'][name.lower()]
+        if command_info['roles']:
+            if not await self.role_check(ctx.author.roles,command_info['roles']):
+                return await self.send_interaction(ctx,"You do not have the required role to use this command.")
+            
+        if authorId in self.cooldowns:
+            time_left = self.cooldowns[authorId] - time.time()
+            if time_left > 0:
+                return await self.send_interaction(ctx,f"Command is on cooldown. Please wait {time_left} seconds before using this command again.")
+            else:
+                del self.cooldowns[authorId]
         serverInfo = self.mongoDoc.document['guilds'][guildId]['connection']
-        prep_args = self.check_for_args(ctx,command)
+        prep_args = await self.check_for_args(ctx,command_info['command'])
+        if 'failed' in prep_args:
+            return await self.send_interaction(ctx,"You need to link your minecraft account to use this command.")
         async with MinecraftClient(host=serverInfo['host'],port=serverInfo['port'],password=serverInfo['password']) as client:
-            client_resp = await client.send(prep_args['args'])
-            return await self.send_interaction(ctx,client_resp)
+            client_resp = await client.send(prep_args['command'])
+            try:
+                await self.send_interaction(ctx,client_resp)
+                if command_info['cooldown']:
+                    self.cooldowns[authorId] = time.time() + command_info['cooldown']
+            except Exception as error:
+                print(error)
+            
+
 
 
 
