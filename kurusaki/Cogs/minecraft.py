@@ -190,8 +190,41 @@ class Minecraft(commands.Cog):
         
         #NOTE: Update the database
         #cooldown: time.time() in seconds
-        await self.mongoDoc.set_items({f'guilds.{guildId}.commands.{name.lower()}':{"command":command,"description":description,"cooldown":cooldown,'roles':[str(role.id) for role in roles]}})
-        return await self.send_interaction(ctx,f"Command {name} created as a command for server.")
+
+        if roles:
+            roles = [ctx.guild.get_role(int(role)) for role in roles]
+        else:
+            roles = []
+
+        await self.mongoDoc.set_items({f'guilds.{guildId}.commands.{name.lower()}':{"command":command,"description":description,"cooldown":cooldown,'roles':roles}})
+        return await self.send_interaction(ctx,f"Command `{name}` created as a command for server.")
+
+
+
+
+    @mc.command(name='del-cmd',with_app_command=True)
+    async def del_command(self,ctx:Context,name:str):
+        """
+        Delete a custom command from the server
+        {command_prefix}{command_name} command-name
+        name(required): The name of the command to delete
+        {command_prefix}{command_name} rain
+        """
+        guildId = str(ctx.guild.id)
+        userId = str(ctx.author.id)
+        if guildId not in self.mongoDoc.document['guilds']:
+            return await self.send_interaction(ctx,f"You do not have any custom command created.\nSetup your rcon connection using `{ctx.prefix}mc setup-rcon`")
+        ownerId = self.mongoDoc.document['guilds'][guildId]['connection']['owner']
+        if userId != ownerId:
+            return await self.send_interaction(ctx,f'You are not the creator of the RCON connection setup. The person that setup the RCON connection must be the one to crate the custom commands.\nCurrent owner {ctx.guild.get_member(int(ownerId))}')
+        
+        if name.lower() not in self.mongoDoc.document['guilds'][guildId]['commands']:
+            return await self.send_interaction(ctx,f'Command {name} not found in command list.\nPlease use the command `{ctx.prefix}mc cmd-list` to view commands. or `{ctx.prefix}mc add-cmd` to add a new command.')
+        
+        #NOTE: Update the database
+        await self.mongoDoc.unset_item(f'guilds.{guildId}.commands.{name.lower()}')
+        return await self.send_interaction(ctx,f"Command {name} has been deleted from the server.")
+
 
 
 
@@ -327,6 +360,42 @@ class Minecraft(commands.Cog):
         async with MinecraftClient(host=rconInfo['host'],port=rconInfo['port'],password=rconInfo['password']) as client:
             return await self.send_interaction(ctx,await client.send(cmd))
 
+
+    # @mc.command(name='update-cmd',with_app_command=True)
+    # async def update_command(self,ctx:Context,name:str,newName:typing.Optional[str],description:typing.Optional[str],roles:typing.Optional[discord.Role],cooldown:typing.Optional[int]):
+    #     """
+    #     Update a custom command for the server
+    #     {command_prefix}{command_name} command-name new-name description roles cooldown
+    #     command-name(required): The name of the command to update
+    #     new-name(optional): The new name of the command
+    #     description(optional): The new description of the command
+    #     roles(optional): The new roles required to use the command
+    #     cooldown(optional): The new cooldown for the command
+    #     {command_prefix}{command_name} rain weather rain
+    #     {command_prefix}{command_name} rain weather rain @Admin 60
+    #     """
+    #     guildId = str(ctx.guild.id)
+    #     userId = str(ctx.author.id)
+    #     if guildId not in self.mongoDoc.document['guilds']:
+    #         return await self.send_interaction(ctx,f"Please setup a Minecraft RCON connection first using the command `{ctx.prefix}mc setup-rcon`")
+    #     ownerId = self.mongoDoc.document['guilds'][guildId]['connection']['owner']
+    #     if userId != ownerId:
+    #         return await self.send_interaction(ctx,f'You are not the creator of the RCON connection setup. The person that setup the RCON connection must be the one to crate the custom commands.\nCurrent owner {ctx.guild.get_member(int(ownerId))}')
+        
+    #     if name.lower() not in self.mongoDoc.document['guilds'][guildId]['commands']:
+    #         return await self.send_interaction(ctx,f'Command {name} not found in command list.\nPlease use the command `{ctx.prefix}mc cmd-list` to view commands. or `{ctx.prefix}mc add-cmd` to add a new command.')
+        
+    #     #NOTE: Update the database
+    #     if roles:
+    #         roles = []
+    #     else:
+    #         roles = []
+
+    #     if newName:
+    #         await self.mongoDoc.rename_key(f'guilds.{guildId}.commands.{name.lower()}',newName.lower())
+    #         name = newName.lower()
+    #     await self.mongoDoc.set_items({f'guilds.{guildId}.commands.{name}':{"command":command,"description":description,"cooldown":cooldown,'roles':roles}})
+    #     return await self.send_interaction(ctx,f"Command `{name}` updated as a command for server.")
 
 async def setup(bot):
     await bot.add_cog(Minecraft(bot)) 

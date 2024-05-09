@@ -69,7 +69,7 @@ class MongoDatabase(object):
         operations = {"$rename":raw_operations}
         self.document =await self.collection.find_one_and_update(self.document_id,operations,return_document=ReturnDocument.AFTER)
     
-    async def unset_item(self,raw_operations):
+    async def unset_item(self,raw_operations:str):
         """Remove/unset a key from the dict/document
 
         Args:
