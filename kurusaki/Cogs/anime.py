@@ -1,13 +1,22 @@
-import aiohttp 
 from discord.ext import commands
 import discord
 import urllib.parse
 from discord.ext.commands import Context
+from .aio_session import aioSessionHandler
 
 class Anime(commands.Cog):
     def __init__(self,bot):
         self.bot:commands.Bot = bot
+        self.aio_session = aioSessionHandler()
 
+
+
+    async def cog_unload(self) -> None:
+        await self.aio_session.close_all_sessions()
+
+    @commands.Cog.listener('on_disconnect')
+    async def lost_connection(self):
+        await self.aio_session.close_all_sessions()
 
     @commands.command(name="imgSearch")
     async def img_search(self,ctx:Context,*,imageUrl:str=None):
@@ -22,11 +31,12 @@ class Anime(commands.Cog):
             imageUrl = ctx.message.attachments[0].url
 
         url = "https://api.trace.moe/search?url={}".format(urllib.parse.quote_plus(imageUrl))
-        response = await self.fetch("GET",url)
+        
+        response = await self.aio_session.request("GET",url)
         if response.status == 200:
             trace_data = await response.json()
             if trace_data["result"]:
-                data = await self.fetch("GET","https://graphql.anilist.co",json={"query":'query($id: Int){Media(id: $id){title{romaji}episode from image{large}}}',"variables":{"id":trace_data["result"][0]["anilist"]}})
+                data = await self.aio_session.request("GET","https://graphql.anilist.co",json={"query":'query($id: Int){Media(id: $id){title{romaji}episode from image{large}}}',"variables":{"id":trace_data["result"][0]["anilist"]}})
                 if data.ok:
                     data = await data.json()
                     data = data["data"]["Media"]
@@ -44,7 +54,7 @@ class Anime(commands.Cog):
         Get a random neko image
         {command_prefix}{command_name}
         """
-        response = await self.fetch("GET","https://nekos.life/api/v2/img/neko")
+        response = await self.aio_session.request("GET","https://nekos.life/api/v2/img/neko")
         if response.status == 200:
             data = await response.json()
             embed = discord.Embed(title="Neko",color=discord.Color.random())
@@ -71,14 +81,14 @@ class Anime(commands.Cog):
                 if quoteType == "anime":
                     return await ctx.send("Please provide anime name")
                 
-            response = await self.fetch("GET",f"https://animechan.xyz/api/random/{quoteType}?name={value}")
+            response = await self.aio_session.request("GET",f"https://animechan.xyz/api/random/{quoteType}?name={value}")
             if response.status == 200:
                 response_data["data"] = await response.json()
         elif quoteType and quoteType not in ['character','anime']:
             return await ctx.send("Invalid quote type.\nUse `character` or `anime`")
         
         elif not quoteType:
-            response = await self.fetch("GET","https://animechan.xyz/api/random")
+            response = await self.aio_session.request("GET","https://animechan.xyz/api/random")
             if response.status == 200:
                 response_data["data"] = await response.json()
         if not response_data["data"]:

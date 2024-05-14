@@ -24,11 +24,11 @@ class AioSessionBase(object):
 
 
     async def request(self,method:str,url:str,**kwargs) -> aiohttp.ClientResponse:
-        should_read = kwargs.pop("should_read",False)
+        should_read = kwargs.pop("should_read",True)
         async with self.session.request(method,url,**kwargs) as response:
-            if should_read:
-                await response.read()
-            return response
+            if not should_read:
+                await response
+            return await response.json()
         
 
 
