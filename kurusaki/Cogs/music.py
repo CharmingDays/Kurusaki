@@ -164,7 +164,6 @@ class Music(commands.Cog):
         """
         player: wavelink.Player | None = payload.player
         if not player:
-            # TODO handle error when player is not found
             return 
         guildVolume = self.musicDoc.document[str(payload.player.guild.id)]['vol']
         if player.volume != guildVolume:

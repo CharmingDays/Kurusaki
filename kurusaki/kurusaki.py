@@ -22,8 +22,8 @@ extensions = [
     'Cogs.member',
     'Cogs.events',
     'Cogs.minecraft',
-    'Cogs.anime'
-    # 'Cogs.text_channel',
+    'Cogs.animals'
+    'Cogs.random',
 ]
 
 

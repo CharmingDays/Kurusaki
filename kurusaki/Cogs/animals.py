@@ -112,4 +112,8 @@ class Animals(commands.Cog):
                         url = data['url']
                         
                 return await ctx.send(url)
-            
+
+
+
+async def setup(bot):
+    await bot.add_cog(Animals(bot))

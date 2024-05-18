@@ -8,6 +8,25 @@ from pymongo import ReturnDocument
 
 
 
+
+
+
+
+class PySqliteDatabase(object):
+    """
+    A class to handle all the database operations for sqlite3 and is used for backup when connection is lost to mongodb or other main database
+    """
+    def __init__(self) -> None:
+        self.new_table = Cursor()
+    
+    def update_table(self,new_table):
+        self.table = new_table
+
+
+
+
+
+
 class MongoDatabase(object):
     """
     A clas to handle all the database operations for mongodb
@@ -40,7 +59,8 @@ class MongoDatabase(object):
 
         Args:
             raw_operations (Dict): the operations to preform into the document
-
+        Example:
+            set_items({"user.John Doe":"pets:[]"}) # adds the name key with the value John Doe
         Returns:
             None: None
 
@@ -55,6 +75,8 @@ class MongoDatabase(object):
 
         Args:
             key_path (str): The path of the key
+        Example:
+            inc_operation("user.age",1) # increments the age by 1
         """
         self.document = await self.collection.find_one_and_update(self.document_id,operations,return_document=ReturnDocument.AFTER)
 
@@ -65,6 +87,8 @@ class MongoDatabase(object):
         Args:
             key_path (str): the path to the key to rename
             new_name (str): the new name for the key
+        Example:
+            rename_key("user.accounts.owners","authorized_users") # owners -> authorized_users
         """
         operations = {"$rename":raw_operations}
         self.document =await self.collection.find_one_and_update(self.document_id,operations,return_document=ReturnDocument.AFTER)
@@ -74,6 +98,8 @@ class MongoDatabase(object):
 
         Args:
             key_path (str): The dot notation path to the key
+        Example: 
+            unset_item("user.accounts") # removes the accounts key
         """
         operation = {"$unset":{raw_operations:""}}
         self.document =await self.collection.find_one_and_update(self.document_id,operation,return_document=ReturnDocument.AFTER)
@@ -84,7 +110,8 @@ class MongoDatabase(object):
         Args:
             array_path (str): The dot notation path of the array
             values (typing.Union[int,str,typing.List]): a list of values or an int to add
-
+        Example: 
+            append_array("user.pets",["value1","value2"]) # adds value1 and value2 to the array
         Returns:
             _type_: _description_
         """
@@ -99,7 +126,8 @@ class MongoDatabase(object):
         Args:
             array_path (int): The dot notation path of the array
             first_or_last (int): 1 to remove last and -1 to remove the first
-
+        Example: 
+            pop_array("array_path",1) # removes the last element
         Returns:
             pymongo.results.UpdateResult: An instance of the pymongo.results.UpdateResult
         """
@@ -111,7 +139,8 @@ class MongoDatabase(object):
 
         Args:
             operations (dict): the pull operations to preform
-
+        Example: 
+            pull_item({"user.pets":value_to_remove}) # removes the value from the array
         Returns:
             None
         """
@@ -123,9 +152,3 @@ class MongoDatabase(object):
     async def custom_operation(self,*operations):
         self.document = await self.collection.find_one_and_update(self.document_id,self.gather_operations(operations),return_document=ReturnDocument.AFTER)
 
-class PySqliteDatabase(object):
-    def __init__(self) -> None:
-        self.new_table = Cursor()
-    
-    def update_table(self,new_table):
-        self.table = new_table

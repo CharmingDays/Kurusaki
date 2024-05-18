@@ -10,32 +10,35 @@ class RandomGenerator(commands.Cog,name='Random'):
         self.bot:commands.bot = bot
 
 
-    async def get_unique_ids(self,amount:int,idList:typing.List):
+    async def shuffle_unique_ids(self,amount:int,idList:typing.List):
         """
         Randomly select unique members given an `amount` of memberList  of ids
         """
         newList= []
-        for _ in range(0,len(idList)):
+        for _ in range(0,len(idList)-1):
             if amount == 0:
                 return newList
 
-            elem = random.choice(idList)
+            elem = idList.pop(random.randint(0,len(idList)-1))
             if elem not in newList:
                 newList.append(elem)
-                idList.remove(elem)
                 amount-=1
 
 
 
-    @commands.hybrid_group(name='random')
+    @commands.hybrid_group(name='random',with_app_command=True)
     async def random_group(self,ctx:Context):
         pass
 
 
-    @random_group.command()
-    async def member(self,ctx:Context,amount:typing.Optional[int]=1,roles:commands.Greedy[discord.Role]=None):
+    @random_group.command(with_app_command=True,name='member-from-role')
+    async def member_from_role(self,ctx:Context,roles:typing.List[discord.Role],amount:typing.Optional[int]=1):
         """
         Select a random member from given role(s) or from entire server
+        roles: The role(s) to select from
+        amount(optional): The amount of members to select defaults to 1
+        {command_prefix}{command_name} @Super Members @Members 2
+        {command_prefix}{command_name} @Members
         """
         if roles:
             memberList= []
@@ -61,16 +64,25 @@ class RandomGenerator(commands.Cog,name='Random'):
     
 
 
-    @random_group.command(name='message')
-    async def _message(self,ctx:Context,count:typing.Optional[int],channel:typing.Optional[discord.TextChannel]):
+    @random_group.command(name='messages')
+    async def _messages(self,ctx:Context,channel:typing.Optional[discord.TextChannel],count:typing.Optional[int]=1):
         """
         Randomly select x amount of messages from the past 14 days.
+        channel(optional): The channel to select from defaults to current channel
+        count(optional): The amount of messages to select defaults to 1 limits to 100
+        {command_prefix}{command_name} #general 5
+        {command_prefix}{command_name} 5
+        {command_prefix}{command_name}
         """
         
         if not channel:
             channel = ctx.channel
-        if not count:
-            pass
+
+        if count > 100:
+            return await ctx.send("Please select a number less than 100")
+        
+        messages = await channel.history(limit=100).flatten()
+        
 
     @random_group()
     async def channel(self,ctx:Context,channel:typing.Union[discord.TextChannel,discord.VoiceChannel]):
