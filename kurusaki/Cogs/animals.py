@@ -10,11 +10,9 @@ class Animals(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.cat_api_headers = {
-            'x-api-key':os.getenv('CAT_API_KEY')
+            'x-api-key':os.getenv('THE_CAT_API_KEY')
         }
     
-
-
 
     @commands.command(name="cat-fact",aliases=["catfact"])
     async def cat_fact(self,ctx:Context):

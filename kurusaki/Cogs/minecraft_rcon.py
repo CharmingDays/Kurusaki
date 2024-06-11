@@ -13,7 +13,6 @@ class MinecraftClient:
         self.host = host
         self.port = port
         self.password = password
-
         self._auth = None
         self._reader = None
         self._writer = None
@@ -52,7 +51,7 @@ class MinecraftClient:
         in_len = struct.unpack('<i', await self._read_data(4))
         in_payload = await self._read_data(in_len[0])
 
-        in_id, in_type = struct.unpack('<ii', in_payload[:8])
+        in_id, _in_type = struct.unpack('<ii', in_payload[:8])
         in_data, in_padd = in_payload[8:-2], in_payload[-2:]
 
         if in_padd != b'\x00\x00':

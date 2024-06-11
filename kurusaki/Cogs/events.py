@@ -16,8 +16,8 @@ class ServerEvents(commands.Cog):
     """
     def __init__(self,bot):
         self.bot:commands.Bot = bot
-        self.command_usage:MongoDatabase
-        self.event_document:MongoDatabase
+        self.mongo_command_usage:MongoDatabase
+        self.mongo_event_document:MongoDatabase
         self.translator = Translator()
         self.reply_queue:typing.Dict = {}
 
@@ -28,8 +28,8 @@ class ServerEvents(commands.Cog):
         collection = database['General']
         eventDoc = await collection.find_one({"_id":"serverEvents"})
         command_usage=await collection.find_one({"_id":"command_usage"})
-        self.event_document = MongoDatabase(client,collection,eventDoc)
-        self.command_usage = MongoDatabase(client,collection,command_usage)
+        self.mongo_event_document = MongoDatabase(client,collection,eventDoc)
+        self.mongo_command_usage = MongoDatabase(client,collection,command_usage)
 
 
 
@@ -40,8 +40,8 @@ class ServerEvents(commands.Cog):
 
     async def cog_before_invoke(self, ctx: Context):
         guildId:str = str(ctx.guild.id)
-        if guildId not in self.event_document.document:
-            await self.event_document.set_items({"welcome_messages":{'messages':[],'channel':0},'auto_roles':[]})
+        if guildId not in self.mongo_event_document.document:
+            await self.mongo_event_document.set_items({"welcome_messages":{'messages':[],'channel':0},'auto_roles':[]})
 
 
 
@@ -50,8 +50,8 @@ class ServerEvents(commands.Cog):
         Automatically add roles to members when they join server if roles provided
         """
         guildId:str = str(member.guild.id)
-        if guildId in self.event_document.document:
-            guildRoles = self.event_document.document[guildId]['auto_roles']
+        if guildId in self.mongo_event_document.document:
+            guildRoles = self.mongo_event_document.document[guildId]['auto_roles']
             incomingRoles = []
             if guildRoles:
                 for roleId in guildRoles:
@@ -79,10 +79,10 @@ class ServerEvents(commands.Cog):
         """
         guildId:str = str(member.guild.id)
         try:
-            welcomeChannelId = self.event_document.document[guildId]['welcome_messages']['channel']
+            welcomeChannelId = self.mongo_event_document.document[guildId]['welcome_messages']['channel']
             if welcomeChannelId:
                 channel = member.guild.get_channel(welcomeChannelId)
-                message = random.choice(self.event_document.document[guildId]['welcome_messages']['messages'])
+                message = random.choice(self.mongo_event_document.document[guildId]['welcome_messages']['messages'])
                 return await channel.send(message)
         except KeyError as error:
             pass
@@ -96,12 +96,12 @@ class ServerEvents(commands.Cog):
             return
         command_name = ctx.command.name.lower()
         guildId = str(ctx.guild.id)
-        if command_name in self.command_usage.document:
+        if command_name in self.mongo_command_usage.document:
             operations = {"$inc":{f"{command_name}.usage":1,f"{command_name}.guilds.{guildId}":1}}
-            await self.command_usage.inc_operation(operations)
+            await self.mongo_command_usage.inc_operation(operations)
         
         else:
-            await self.command_usage.set_items({command_name:{'usage':1,'guilds':{guildId:1}}})
+            await self.mongo_command_usage.set_items({command_name:{'usage':1,'guilds':{guildId:1}}})
 
         
 
@@ -262,12 +262,12 @@ class ServerEvents(commands.Cog):
         if not ctx.guild:
             return await ctx.send("This command can only be used in servers.")
         guildId:str = str(ctx.guild.id)
-        guildRoles:typing.List[int] = self.event_document.document[guildId]['auto_roles']
+        guildRoles:typing.List[int] = self.mongo_event_document.document[guildId]['auto_roles']
         if role.id in guildRoles:
             return await ctx.send(f"Role **{role.name}** already in auto role list")
 
-        self.event_document.document[guildId]['auto_roles'].append(role.id)
-        await self.event_document.append_array({f"{guildId}.auto_roles":role.id})
+        self.mongo_event_document.document[guildId]['auto_roles'].append(role.id)
+        await self.mongo_event_document.append_array({f"{guildId}.auto_roles":role.id})
         return await ctx.send(f"Added role {role.name} to auto role list")
 
 
@@ -300,22 +300,22 @@ class ServerEvents(commands.Cog):
             # TODO  provide examples of allowed ones
             return await ctx.send(f"Your welcome message contains attributes that aren't allowed.\n{messageCheck}")
         guildId:str = str(ctx.guild.id)
-        savedChannel = self.event_document.document[guildId]['welcome_messages']['channel']
+        savedChannel = self.mongo_event_document.document[guildId]['welcome_messages']['channel']
         if savedChannel:
             # contains content
             if channel and savedChannel != channel.id:
                 # update the channel id to a new one
-                await self.event_document.set_items({f"{guildId}.welcome_messages.channel":channel.id})
+                await self.mongo_event_document.set_items({f"{guildId}.welcome_messages.channel":channel.id})
 
         
-            await self.event_document.append_array({f"{guildId}.welcome_messages.messages":message})
+            await self.mongo_event_document.append_array({f"{guildId}.welcome_messages.messages":message})
             return await ctx.send(f"Added new message to channel {channel.mention}\n**{message}**")
         
         if not channel:
             channel = ctx.channel
         
         newData = {'channel':channel.id,'messages':[message]}
-        await self.event_document.set_items({f"{guildId}.welcome_messages":newData})
+        await self.mongo_event_document.set_items({f"{guildId}.welcome_messages":newData})
         return await ctx.send(f"Set {channel.mention} as welcome message channel since no channel provided.\nPlease use the same command with provided channel name and welcome message to change channel.\n")
 
 async def setup(bot:commands.Bot):

@@ -10,7 +10,7 @@ class RandomGenerator(commands.Cog,name='Random'):
         self.bot:commands.bot = bot
 
 
-    async def shuffle_unique_ids(self,amount:int,idList:typing.List):
+    async def get_unique_ids(self,amount:int,idList:typing.List):
         """
         Randomly select unique members given an `amount` of memberList  of ids
         """
@@ -108,9 +108,9 @@ class RandomGenerator(commands.Cog,name='Random'):
         return await ctx.send(f"**{random.randint(1,sides)}**")
 
     @random_group.command()
-    async def role(self,ctx:Context,amount:int):
-        uniqueRoles = await self.get_unique_ids([role.id for role in ctx.guild.roles])
-        
+    async def role(self,ctx:Context,amount:int=1):
+        uniqueRoles = await self.get_unique_ids(amount,[role.id for role in ctx.guild.roles])
+        return await ctx.send(" ".join([ctx.guild.get_role(roleId).mention for roleId in uniqueRoles]))
         
 
 
