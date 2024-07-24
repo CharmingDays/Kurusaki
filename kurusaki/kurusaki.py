@@ -22,8 +22,8 @@ extensions = [
     'Cogs.member',
     'Cogs.events',
     'Cogs.minecraft',
-    'Cogs.animals'
-    'Cogs.random',
+    # 'Cogs.animals',
+    # 'Cogs.random'
 ]
 
 
