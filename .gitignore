@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+
+# Ignore Test Files
+
 # Distribution / packaging
 .Python
 kurusaki/test_cog.py
