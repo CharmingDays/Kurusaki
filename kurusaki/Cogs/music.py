@@ -12,6 +12,10 @@ from discord.ext import commands
 from wavelink import Player,Node
 from discord.ext import tasks
 import os
+
+
+
+
 from .database_handler import MongoDatabase
 
 
@@ -332,7 +336,7 @@ class Music(commands.Cog):
     async def load_playlist_songs(self,ctx:Context,player:Player,songs:typing.List[str]):
         tracks:typing.List[wavelink.Playable] = []
         for song in songs:
-            track:wavelink.Playable = await wavelink.Playable.search(f"https://www.youtube.com/watch?v={song['id']}")
+            track:wavelink.Playable = await wavelink.Playable.search(f"https://www.youtube.com/watch?v={song['id']}",source=wavelink.TrackSource.YouTube)
             tracks.append(track[0])
             await self.add_message_info(ctx,track[0])
         await player.queue.put_wait(tracks)
@@ -368,7 +372,7 @@ class Music(commands.Cog):
 
 
     @commands.command(name='loadPlaylist')
-    async def load_playlist(self,ctx:Context,songs=None):
+    async def load_playlist(self,ctx:Context,songs:typing.Dict| None=None):
         """
         Adds the songs in your personal playlist to queue and start it if no song currently playing
         {command_prefix}{command_name}
@@ -382,7 +386,8 @@ class Music(commands.Cog):
         if player.current:
             return await self.load_playlist_songs(ctx,player,songs)
         first_song  = songs.pop(0)
-        first_track = await wavelink.Playable.search(f"https://www.youtube.com/watch?v={first_song['id']}",source=wavelink.TrackSource.YouTube)
+        url = f"https://www.youtube.com/watch?v={first_song['id']}"
+        first_track:typing.Union[wavelink.Playable, wavelink.Playlist] = await wavelink.Playable.search(url,source=wavelink.TrackSource.YouTube)
         await self.add_message_info(ctx,first_track[0])
         await player.play(first_track[0])
         return await self.load_playlist_songs(ctx,player,songs)
@@ -684,3 +689,5 @@ class Music(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
+
+

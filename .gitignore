@@ -7,7 +7,10 @@ __pycache__/
 *.so
 
 
-# Ignore Test Files
+#Custom Ignores
+kurusaki/lavalink/logs
+kurusaki/lavalink/plugins
+
 
 # Distribution / packaging
 .Python
