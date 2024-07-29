@@ -55,24 +55,22 @@ class Music(commands.Cog):
 
 
 
-    async def permission_checker(self,ctx:Context):
-        # NOTE: Original track player should not require permission for [skip,stop,seek]
-        player:Player = typing.cast(wavelink.Player,ctx.voice_client)
-        command_name= ctx.command.name
-        author_commands = ['skip','stop','seek','popqueue']
-        audio_controllers = ['volume','listento','stop','disconnect','popqueue','stop','pause','resume','skip','seek']
-        if not player:
-            return False
-        if len(player.channel.members) == 2:
-            return True
+    # async def permission_checker(self,ctx:Context):
+    #     # NOTE: Original track player should not require permission for [skip,stop,seek]
+    #     player:Player = typing.cast(wavelink.Player,ctx.voice_client)
+    #     command_name= ctx.command.name
+    #     author_commands = ['skip','stop','seek','popqueue']
+    #     audio_controllers = ['volume','listento','stop','disconnect','popqueue','stop','pause','resume','skip','seek']
+    #     if not player:
+    #         return False
+    #     if len(player.channel.members) == 2:
+    #         return True
         
-        if command_name in audio_controllers:
-            pass
+    #     if command_name in audio_controllers:
+    #         pass
 
 
     async def cog_before_invoke(self, ctx: Context):
-
-
         if not ctx.guild:
             raise commands.CommandInvokeError("Command must be in server.")
         
@@ -102,7 +100,7 @@ class Music(commands.Cog):
         DISCONNECT_AFTER = 60*3
         await asyncio.sleep(DISCONNECT_AFTER)
         player:Player | None = typing.cast(wavelink.Player,guild.voice_client)
-        if not player:
+        if not player.playing:
             # player already disconnected or error occurred
             return
         if not player.current and len(player.queue) == 0:
@@ -606,7 +604,7 @@ class Music(commands.Cog):
                 return await ctx.send(f"Position exceeds queue count of {len(player.queue)}")
             else:
                 new_track = player.queue[position-1]
-                await player.queue.delete(position-1)
+                player.queue.delete(position-1)
                 await player.play(new_track)
         else:
             await player.stop()
@@ -655,7 +653,7 @@ class Music(commands.Cog):
         {command_prefix}{command_name}
         """
         player:Player = typing.cast(wavelink.Player,ctx.voice_client)
-        if not player:
+        if not player.playing:
             return await ctx.send("No audio playing.")
         if player.queue.mode == wavelink.QueueMode.loop:
             player.queue.mode = wavelink.QueueMode.normal
