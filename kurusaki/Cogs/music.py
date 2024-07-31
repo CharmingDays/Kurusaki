@@ -32,7 +32,7 @@ class Music(commands.Cog):
     async def cog_load(self):
         await self.setup_database()
         server_uri = f"http://{os.getenv('lavalink_server')}:{os.getenv('lavalink_port')}"
-        node:Node = Node(uri=server_uri,password=os.getenv("lavalink_password"),identifier='kurusaki')
+        node:Node = Node(uri=server_uri,password=os.getenv("lavalink_password"),identifier='kurusaki',inactive_channel_tokens=2,inactive_player_timeout=300)
         await wavelink.Pool.connect(client=self.bot,nodes=[node])
         self.node:Node = wavelink.Pool.get_node('kurusaki')
         print(f"Node: {self.node}")
@@ -189,8 +189,6 @@ class Music(commands.Cog):
                 # paly next song in queue
                 next_song = await player.queue.get_wait()
                 return await player.play(next_song)
-            if not player.current:
-                return await self.should_disconnect(player.guild)
 
 
     # @commands.Cog.listener('on_reaction_add')
@@ -447,7 +445,6 @@ class Music(commands.Cog):
             return await ctx.message.add_reaction('✅')
         return await ctx.send("Audio already stopped.")
 
-
     @commands.command(name='dcme')
     async def disconnect_me(self,ctx:Context):
         """
@@ -549,7 +546,6 @@ class Music(commands.Cog):
         {command_prefix}{command_name}
         """
         player:Player = typing.cast(wavelink.Player,ctx.voice_client)
-        filter = {"_id":"music"}
         if not player.current:
             return await ctx.send("No song currently playing to save.")
 
@@ -581,7 +577,7 @@ class Music(commands.Cog):
         position*=1000
         player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         if position >= player.current.length:
-            return await ctx.send("Position exceeds or equals to song duration")
+            return await ctx.send(f"Position exceeds or equals to song duration of {player.current.length}")
         
         return await player.seek(position)
 

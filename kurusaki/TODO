@@ -5,7 +5,7 @@ fall back to previous version if failed.
 TODO Add music permissions handler for audio control commands
 TODO Add custom commandNotFound error for help command when help target is a cog
 TODO Add lyrics option for audio playing when available from lyrics API
-TODO Send cog help command specific to the language used
 TODO command usage counter should only add new entries with original command name and not it's aliases.
 but should also include usages of aliases
 TODO Offer command correction response by text reply or reaction
+TODO make collections and database if not found, add all names into .env
