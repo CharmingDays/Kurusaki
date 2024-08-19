@@ -1,10 +1,12 @@
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
+from pymongo import MongoClient
 import sqlite3
 from sqlite3 import Cursor
 import typing
 from motor import core as MotorCore
 from pymongo import ReturnDocument
+import uuid
 
 
 
@@ -41,11 +43,8 @@ class MongoDatabase(object):
         self.document_id = {"_id":document['_id']}
         # self.setup_attributes()
 
-    def setup_attributes(self):
-        # if self.
-        pass
-    
-    
+
+
     def gather_operations(self,operations):
         sorted_operations = {}
         for operation in operations:
@@ -152,3 +151,45 @@ class MongoDatabase(object):
     async def custom_operation(self,*operations):
         self.document = await self.collection.find_one_and_update(self.document_id,self.gather_operations(operations),return_document=ReturnDocument.AFTER)
 
+
+
+
+
+class KurusakiMongodb(object):
+    def __init__(self,client:MongoClient):
+        self.client:MongoClient = client
+        self.collection:MotorCore.AgnosticCollection
+        self.document:typing.Dict
+
+
+
+
+    def save_document_id(self,uuid):
+        with open('document_uuid.txt','w') as file:
+            file.write(uuid)
+
+
+    async def create_document(self,doc_id:str|None=None) -> typing.Dict | None:
+        """Create a new document
+
+        Args:
+            id (str): The id of the document
+        Returns:
+            typing.Dict: The document created
+        """
+        if doc_id is None:
+            doc_id = uuid.uuid4()
+        if not hasattr(self,"collection"):
+            self.client.get_database()
+
+        
+        self.document = await self.collection.insert_one({"_id":doc_id})
+        return self.document
+
+    async def create_collection(self,collection_name:str):
+        """Create a new collection
+
+        Args:
+            collection_name (str): The name of the collection
+        """
+        self.collection = self.client[collection_name]
