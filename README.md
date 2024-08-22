@@ -53,6 +53,22 @@ Create a cluster
 <img width="400px" src="kurusaki/mongodb_setup/cluster_setup.png">
 
 Give it a name, select the free one and add a tag and create the cluster.
+
+Make sure to create a <b>Database</b> named `Discord-Bot-Database` a <b>collection</b> named General and the documents required with `_id` matching the ones in the code.
+```py
+"""
+These are the documents you need to create with the given ids. You can change the ids, but you'll have to change the references to them in the code as well
+"""
+
+
+{_id:"music"}
+{_id:"bot_status"}
+{_id:"bot_prefixes"}
+
+```
+
+
+
 <img width= "200" src="kurusaki/mongodb_setup/naming_creating.png"> <img width="100" src="kurusaki/mongodb_setup/tags.png"> <img width="100" src="kurusaki/mongodb_setup/create_deploy.png">
 <li>
 

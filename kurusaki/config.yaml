@@ -1,0 +1,7 @@
+database:
+    host: mongodb #option of mongodb or sqlite
+    required_documents:
+        - "bot_prefixes"
+        - "bot_status"
+        - "music"
+        - "events"

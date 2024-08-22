@@ -8,8 +8,8 @@ __pycache__/
 
 
 #Custom Ignores
-kurusaki/lavalink/logs
-kurusaki/lavalink/plugins
+kurusaki/lavalink/logs/
+kurusaki/lavalink/plugins/
 
 
 # Distribution / packaging

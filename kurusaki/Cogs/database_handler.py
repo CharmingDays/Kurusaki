@@ -1,4 +1,5 @@
 import asyncio
+import os
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 from pymongo import MongoClient
 import sqlite3
@@ -154,42 +155,34 @@ class MongoDatabase(object):
 
 
 
-
-class KurusakiMongodb(object):
-    def __init__(self,client:MongoClient):
-        self.client:MongoClient = client
-        self.collection:MotorCore.AgnosticCollection
-        self.document:typing.Dict
-
-
-
-
-    def save_document_id(self,uuid):
-        with open('document_uuid.txt','w') as file:
-            file.write(uuid)
+class KurusakiMusic(object):
+    def __init__(self):
+        self.client:MongoClient = MotorClient(os.getenv("MONGO"))
+        self.database:MotorCore.AgnosticDatabase = self.client['Discord-Bot-Database']
+        self.collection:MotorCore.AgnosticCollection = self.database['General']
+        self.document:typing.Dict[typing.Any,typing.Any]
+        self.doc_id = {"_id":"music"}
 
 
-    async def create_document(self,doc_id:str|None=None) -> typing.Dict | None:
-        """Create a new document
+    async def load_document(self):
+        music_doc = await self.collection.find_one({"_id":"music"})
+        if music_doc:
+            self.document = music_doc
+            self.doc_id = music_doc['_id']
+        else:
+            self.document = {}
 
-        Args:
-            id (str): The id of the document
-        Returns:
-            typing.Dict: The document created
-        """
-        if doc_id is None:
-            doc_id = uuid.uuid4()
-        if not hasattr(self,"collection"):
-            self.client.get_database()
 
-        
-        self.document = await self.collection.insert_one({"_id":doc_id})
-        return self.document
+    async def change_volume(self,guild_id:int,volume:int):
+        await self.collection.find_one_and_update(self.doc_id,{"$set":{f"{guild_id}.vol":volume}})
 
-    async def create_collection(self,collection_name:str):
-        """Create a new collection
 
-        Args:
-            collection_name (str): The name of the collection
-        """
-        self.collection = self.client[collection_name]
+    async def remove_song(self,user_id:int,song:str):
+        await self.collection.find_one_and_update(self.doc_id,{"$pull":{f"userPlaylist.{user_id}":song}})
+
+
+    async def save_song(self,user_id:int,track_info:typing.Dict):
+        if user_id not in self.document['userPlaylist']:
+            await self.collection.find_one_and_update(self.doc_id,{"$set":{f"userPlaylist.{user_id}":[track_info]}})
+        else:
+            await self.collection.find_one_and_update(self.doc_id,{"$push":{f"userPlaylist.{user_id}":track_info}})

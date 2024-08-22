@@ -1,5 +1,4 @@
 import asyncio
-import json
 import math
 import random
 from typing import Optional
@@ -93,14 +92,15 @@ class Music(commands.Cog):
 
 
     async def should_disconnect(self,guild:discord.Guild):
-        DISCONNECT_AFTER = 60*3
+        DISCONNECT_AFTER = 60
         await asyncio.sleep(DISCONNECT_AFTER)
         player:Player | None = typing.cast(wavelink.Player,guild.voice_client)
         if not player.playing:
+
             # player already disconnected or error occurred
             return
-        if not player.current and len(player.queue) == 0:
-            # clean up the player and clear queue
+        if not player.current and len(player.queue) == 0 or player.channel.members == 1:
+            # disconnect if no more songs or if only bot in channel
             player.cleanup()
             await player.disconnect()
             self.messages.pop(guild.id)
@@ -172,6 +172,9 @@ class Music(commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self,payload:wavelink.TrackEndEventPayload):
+        """
+        Instructions to run when a track ends.
+        """
         player: wavelink.Player | None = payload.player
         if player:
             if player.playing:
@@ -185,8 +188,10 @@ class Music(commands.Cog):
                 # paly next song in queue
                 next_song = await player.queue.get_wait()
                 return await player.play(next_song)
-
-
+            await self.should_disconnect(payload.player.guild)
+        if not player:
+            await player.disconnect()
+            player.cleanup()
     # @commands.Cog.listener('on_reaction_add')
     # async def music_control_reactions(self,reaction:discord.Reaction,user:typing.Union[discord.User,discord.Member]):
     #     if user != self.bot.usera
