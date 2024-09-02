@@ -168,7 +168,7 @@ class KurusakiMusic(object):
         music_doc = await self.collection.find_one({"_id":"music"})
         if music_doc:
             self.document = music_doc
-            self.doc_id = music_doc['_id']
+            self.doc_id['_id'] = music_doc['_id']
         else:
             self.document = {}
 
