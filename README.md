@@ -55,17 +55,6 @@ Create a cluster
 Give it a name, select the free one and add a tag and create the cluster.
 
 Make sure to create a <b>Database</b> named `Discord-Bot-Database` a <b>collection</b> named General and the documents required with `_id` matching the ones in the code.
-```py
-"""
-These are the documents you need to create with the given ids. You can change the ids, but you'll have to change the references to them in the code as well
-"""
-
-
-{_id:"music"}
-{_id:"bot_status"}
-{_id:"bot_prefixes"}
-
-```
 
 
 
@@ -76,11 +65,11 @@ Connect to your new cluster and past the link into your bot's .env file by assig
 
 <img width="250px" src="kurusaki/mongodb_setup/connect.png">
 <img width="100px" src="kurusaki/mongodb_setup/drivers.png">
-<img width="250px" src="kurusaki/mongodb_setup/save_url.png">
 
 <span style="color: yellow"> NOTE: Make sure to replace `<password>` with your created password</span>
 </ol>
 
+</br>
 
 ## Enter `s.help` to view the commands that he bot.
 ## Visit [kurusaki website](https://kurusaki-api.gitbook.io/kurusaki-bot/) for better documentation  on how to use the bot

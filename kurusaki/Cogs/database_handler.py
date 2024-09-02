@@ -170,7 +170,8 @@ class KurusakiMusic(object):
             self.document = music_doc
             self.doc_id['_id'] = music_doc['_id']
         else:
-            self.document = {}
+            self.document = {"_id":"music","userPlaylist":{}}
+            await self.collection.insert_one(self.document)
 
 
     async def change_volume(self,guild_id:int,volume:int):
