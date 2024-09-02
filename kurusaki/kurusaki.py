@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import os
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 import logging
-import requests
+import aiohttp
 
 
 
@@ -56,12 +56,13 @@ async def connect_database():
     status_doc = await collections.find_one({"_id":"bot_status"})
     if not status_doc:
         #TODO: convert to async request later via aiohttp
-        status_doc = requests.get('https://kurusaki.com/kurusaki_bot_status').json()
-        status_doc['_id'] = 'bot_status'
-        await collections.insert_one(status_doc)
-        status_doc.pop("_id",None)
-
-    mongodb['status'] = status_doc
+        async with aiohttp.ClientSession() as session:
+            resp = await session.get('https://kurusaki.com/kurusaki_bot_status')
+            status_doc = await resp.json()
+            status_doc['_id'] = 'bot_status'
+            await collections.insert_one(status_doc)
+            status_doc.pop("_id",None)
+            mongodb['status'] = status_doc
 
 
 def get_prefix(bot,ctx):
