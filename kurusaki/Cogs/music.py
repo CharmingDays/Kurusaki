@@ -11,7 +11,7 @@ from discord.ext import commands
 from wavelink import Player,Node
 from discord.ext import tasks
 import os
-from .database_handler import MongoDatabase, MusicMongo
+from .database_handler import MongoDatabase
 
 
 class Music(commands.Cog):
@@ -22,26 +22,22 @@ class Music(commands.Cog):
         self.bot:commands.Bot = bot
         self.messages = {}
         self.no_cog_check = ['playlist',' poplaylist','serversongs','nowplaying','np','queue']
-        self.musicDoc:MusicMongo = MusicMongo()
+        self.musicDoc:MongoDatabase
 
     async def cog_load(self):
-        await self.musicDoc.load_document()
-        server_uri = f"http://{os.getenv('lavalink_server')}:{os.getenv('lavalink_port')}"
+        await self.setup_database()
+        server_uri = f"http://{os.getenv('lavalink_orange')}:{os.getenv('lavalink_port')}"
         node:Node = Node(uri=server_uri,password=os.getenv("lavalink_password"),identifier='kurusaki',inactive_channel_tokens=1,inactive_player_timeout=10)
         await wavelink.Pool.connect(client=self.bot,nodes=[node])
         self.node:Node = wavelink.Pool.get_node('kurusaki')
         print(f"Node: {self.node}")
 
     async def setup_database(self):
-        #NOTE Method Deprecated!
         client = MotorClient(os.getenv("MONGO"))
         database = client['Discord-Bot-Database']
         collection = database['General']
         doc = await collection.find_one("music")
         self.musicDoc = MongoDatabase(client,collection,doc)
-
-
-
     async def cog_command_error(self, ctx: Context, error: commands.CommandError):
         if isinstance(error,commands.CommandInvokeError):
             return await ctx.send(error.original)
@@ -50,7 +46,7 @@ class Music(commands.Cog):
 
     async def add_guild_volume(self,ctx:Context):
         # Adds the guild to database and set default volume to 50
-        await self.musicDoc.change_volume(ctx.guild.id,50)
+        await self.musicDoc.set_items({f"{ctx.guild.id}":{"vol":50}})
 
 
 
@@ -517,8 +513,7 @@ class Music(commands.Cog):
             return await ctx.send("You do not have songs in your playlist")
         
         removed_song = self.musicDoc.document['userPlaylist'][str(ctx.author.id)].pop(position-1)
-        await self.musicDoc.remove_song(ctx.author.id,removed_song)
-        # await self.musicDoc.pull_item({f"userPlaylist.{ctx.author.id}":removed_song})
+        await self.musicDoc.pull_item({f"userPlaylist.{ctx.author.id}":removed_song})
         return await ctx.send(f"Removed song **{removed_song['title']}** from your playlist.")
 
     
@@ -562,12 +557,10 @@ class Music(commands.Cog):
         
         
             else:
-                await self.musicDoc.save_song(ctx.author.id,{'title':player.current.title,'id':player.current.identifier})
-                # await self.musicDoc.append_array({f"userPlaylist.{ctx.author.id}":{"title":player.current.title,"id":player.current.identifier}})
+                await self.musicDoc.append_array({f"userPlaylist.{ctx.author.id}":{"title":player.current.title,"id":player.current.identifier}})
         else:
             # new playlist user
-            await self.musicDoc.save_song(ctx.author.id,{'title':player.current.title,'id':player.current.identifier})
-            # await self.musicDoc.set_items({f"userPlaylist.{ctx.author.id}":[{"title":player.current.title,"id":player.current.identifier}]})
+            await self.musicDoc.set_items({f"userPlaylist.{ctx.author.id}":[{"title":player.current.title,"id":player.current.identifier}]})
         
         return await ctx.send(f"Saved **{player.current.title}** to your playlist")
 
@@ -683,8 +676,7 @@ class Music(commands.Cog):
             _volume = 200
             await ctx.send("Set volume to 200 because it can't exceed 200.")
         await player.set_volume(_volume)
-        # await self.musicDoc.set_items({f"{ctx.guild.id}.vol":_volume})
-        await self.musicDoc.change_volume(ctx.guild.id,_volume)
+        await self.musicDoc.set_items({f"{ctx.guild.id}.vol":_volume})
         return await ctx.send(f"Set volume to {_volume}")
 
 
