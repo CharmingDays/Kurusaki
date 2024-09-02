@@ -95,13 +95,12 @@ class Music(commands.Cog):
         DISCONNECT_AFTER = 60
         await asyncio.sleep(DISCONNECT_AFTER)
         player:Player | None = typing.cast(wavelink.Player,guild.voice_client)
-        if not player.playing:
+        if not player.channel or not player:
 
             # player already disconnected or error occurred
             return
-        if not player.current and len(player.queue) == 0 or player.channel.members == 1:
+        if not player.playing and len(player.queue) == 0 or player.channel.members == 1:
             # disconnect if no more songs or if only bot in channel
-            player.cleanup()
             await player.disconnect()
             self.messages.pop(guild.id)
 
