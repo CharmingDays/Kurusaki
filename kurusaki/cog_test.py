@@ -11,7 +11,7 @@ bot = commands.Bot(intents=discord.Intents.all(),command_prefix='t.',case_insens
 
 
 async def load_cogs():
-    cogs = ['Cogs.events','Cogs.music','Cogs.help','Cogs.test_cog']
+    cogs = ['Cogs.music','Cogs.help',]
     for i in cogs:
         await bot.load_extension(i) 
         print(i)

@@ -9,7 +9,7 @@ plugins:
 #    another_key: another_value
 lavalink:
   plugins:
-   - dependency: "dev.lavalink.youtube:youtube-plugin:1.4.0" # required, the coordinates of your plugin
+   - dependency: "dev.lavalink.youtube:youtube-plugin:1.7.2" # required, the coordinates of your plugin
      snapshot: false # optional, defaults to false, used to tell Lavalink to use the snapshot repository instead of the release repository
 #  pluginsDir: "./plugins" # optional, defaults to "./plugins"
 #  defaultPluginRepository: "https://maven.lavalink.dev/releases" # optional, defaults to the Lavalink release repository
