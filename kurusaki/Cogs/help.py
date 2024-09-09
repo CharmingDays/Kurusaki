@@ -23,7 +23,7 @@ class MyHelpCommand(commands.MinimalHelpCommand):
 
 
     async def send_bot_help(self, command):
-        emb = discord.Embed(color=discord.Color.random(), title="Help Commands", description=f"For a list of command cogs __{self.context.prefix}cogs__\nFor help with a specific command __{self.context.prefix}help Command Name__\nFor a list of commands in a specific cog __{self.context.prefix}help cog name__\n__{self.context.prefix}addPrefix NewPrefix__\n\n\n[Invite Bot](https://discordapp.com/oauth2/authorize?client_id={self.context.bot.user.id}&scope=bot&permissions=8) | [Bot Server](https://discord.gg/CpcW8UyhfD)")
+        emb = discord.Embed(color=discord.Color.random(), title="Help Commands", description=f"For a list of command cogs __{self.context.prefix}cogs__\nFor help with a specific command __{self.context.prefix}help Command Name__\nFor a list of commands in a specific category __{self.context.prefix}help cog name__\n__{self.context.prefix}addPrefix NewPrefix__\n\n\n[Invite Bot](https://discordapp.com/oauth2/authorize?client_id={self.context.bot.user.id}&scope=bot&permissions=8) | [Bot Server](https://discord.gg/CpcW8UyhfD)")
         emb.set_thumbnail(url=self.context.bot.user.display_avatar.url)
         if self.context.guild.icon is None:
             emb.set_footer(icon_url="https://cdn.discordapp.com/attachments/671263788862930964/904594760675774464/NA_ICON.png",text=self.context.guild.name)

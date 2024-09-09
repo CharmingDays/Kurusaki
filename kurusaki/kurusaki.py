@@ -63,7 +63,7 @@ async def connect_database():
             await collections.insert_one(status_doc)
             status_doc.pop("_id",None)
             mongodb['status'] = status_doc
-
+    mongodb['status'] = status_doc
 
 def get_prefix(bot,ctx):
     guildId = str(ctx.guild.id)
