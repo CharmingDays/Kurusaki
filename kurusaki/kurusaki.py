@@ -63,6 +63,7 @@ async def connect_database():
             await collections.insert_one(status_doc)
             status_doc.pop("_id",None)
             mongodb['status'] = status_doc
+    status_doc.pop("_id",None)
     mongodb['status'] = status_doc
 
 def get_prefix(bot,ctx):
@@ -103,7 +104,6 @@ async def setup_hook():
 
 @tasks.loop(minutes=15)
 async def auto_change_bot_status():
-
     status_type = random.choice(list(mongodb['status'].keys()))
     status_message = random.choice(mongodb['status'][status_type])
     await kurusaki.change_presence(activity=discord.Activity(name=status_message,type=bot_status_types[status_type]))
