@@ -577,7 +577,7 @@ class Music(commands.Cog):
         position*=1000
         player:Player = typing.cast(wavelink.Player,ctx.voice_client)
         if position >= player.current.length:
-            return await ctx.send(f"Position exceeds or equals to song duration of {player.current.length}")
+            return await ctx.send(f"Position exceeds or equals to song duration of {player.current.length/1000} seconds")
         
         return await player.seek(position)
 
