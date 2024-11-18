@@ -1,4 +1,4 @@
-FROM openjdk:18-ea-jdk-slim
+FROM openjdk:21-ea-jdk-slim
 VOLUME /lavalink_data
 WORKDIR /lavalink_data
 EXPOSE 2333
